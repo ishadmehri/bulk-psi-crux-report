@@ -1,0 +1,12 @@
+.env
+node_modules/
+
+# Generated reports.
+*.xlsx
+reports/
+
+# Your own URL list — urls.example.txt shows the format.
+urls.txt
+
+# Drafts that are not part of the tool.
+article-elinweb.md

@@ -1,0 +1,6 @@
+# One URL per line. Blank lines and lines starting with # are ignored.
+# A bare domain gets https:// added, so "example.com/page" works too.
+
+https://example.com/
+https://example.com/blog/
+example.com/contact          # anything after the URL is ignored

@@ -1,0 +1,34 @@
+{
+  "name": "crux-report",
+  "version": "1.0.0",
+  "description": "Core Web Vitals reporting from Chrome UX Report + PageSpeed Insights into an Excel workbook",
+  "type": "module",
+  "main": "index.js",
+  "bin": { "crux-report": "index.js" },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/run.js"
+  },
+  "keywords": [
+    "core-web-vitals",
+    "pagespeed-insights",
+    "crux",
+    "chrome-ux-report",
+    "lighthouse",
+    "seo",
+    "performance",
+    "sitemap",
+    "excel",
+    "xlsx"
+  ],
+  "author": "Iman Shadmehri (https://elinweb.ir)",
+  "homepage": "https://github.com/ishadmehri/crux-report#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/ishadmehri/crux-report.git" },
+  "bugs": { "url": "https://github.com/ishadmehri/crux-report/issues" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "license": "MIT",
+  "private": true
+}
