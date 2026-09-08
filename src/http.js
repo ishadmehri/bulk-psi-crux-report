@@ -3,7 +3,7 @@
  * Never throws for HTTP status — callers decide what a 404 means.
  */
 
-const UA = 'Mozilla/5.0 (compatible; crux-report/1.0; +https://github.com/)';
+const UA = 'Mozilla/5.0 (compatible; bulk-psi-crux-report/1.0; +https://github.com/ishadmehri/bulk-psi-crux-report)';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

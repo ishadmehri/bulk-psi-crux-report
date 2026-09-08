@@ -323,7 +323,7 @@ function addSummarySheet(wb, { runInfo, groups, cruxRows, psiRows, trendRows, or
 
 export async function writeWorkbook(path, data) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'crux-report';
+  wb.creator = 'bulk-psi-crux-report';
   wb.created = new Date();
 
   addSummarySheet(wb, data);

@@ -1,4 +1,4 @@
-# crux-report
+# bulk-psi-crux-report
 
 گزارش سرعت صفحات در یک فایل اکسل.
 

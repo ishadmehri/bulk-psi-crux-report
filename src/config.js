@@ -243,7 +243,7 @@ export function buildConfig(args) {
 }
 
 export const HELP = `
-crux-report - page speed reports into an Excel workbook
+bulk-psi-crux-report - page speed reports into an Excel workbook
 
   PageSpeed runs by default: it works on every URL whether or not it has traffic.
   CrUX is opt-in with --crux: real-user data, one call per domain.

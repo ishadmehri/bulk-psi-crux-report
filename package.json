@@ -1,10 +1,10 @@
 {
-  "name": "crux-report",
+  "name": "bulk-psi-crux-report",
   "version": "1.0.0",
-  "description": "Core Web Vitals reporting from Chrome UX Report + PageSpeed Insights into an Excel workbook",
+  "description": "Bulk PageSpeed Insights + CrUX reports for a whole sitemap, into one Excel workbook",
   "type": "module",
   "main": "index.js",
-  "bin": { "crux-report": "index.js" },
+  "bin": { "bulk-psi-crux-report": "index.js" },
   "scripts": {
     "start": "node index.js",
     "test": "node test/run.js"
@@ -22,9 +22,9 @@
     "xlsx"
   ],
   "author": "Iman Shadmehri (https://elinweb.ir)",
-  "homepage": "https://github.com/ishadmehri/crux-report#readme",
-  "repository": { "type": "git", "url": "git+https://github.com/ishadmehri/crux-report.git" },
-  "bugs": { "url": "https://github.com/ishadmehri/crux-report/issues" },
+  "homepage": "https://github.com/ishadmehri/bulk-psi-crux-report#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/ishadmehri/bulk-psi-crux-report.git" },
+  "bugs": { "url": "https://github.com/ishadmehri/bulk-psi-crux-report/issues" },
   "engines": { "node": ">=20" },
   "dependencies": {
     "exceljs": "^4.4.0"
