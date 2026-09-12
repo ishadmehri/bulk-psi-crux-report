@@ -50,7 +50,7 @@ export function describeFetchError(e, url, env = process.env) {
 
   if (proxy && code && CONNECTION_CODES.has(code) && !bypassesProxy(host, env)) {
     return `${code} via the proxy at ${proxy} - NODE_USE_ENV_PROXY is on, so this did not go direct. ` +
-      `The site can be fine and still fail here: your browser has its own bypass list. ` +
+      `The site can be fine and still fail here - your browser may not be using this proxy at all. ` +
       (host ? `To reach ${host} directly, add it to NO_PROXY.` : 'Check NO_PROXY.');
   }
 
