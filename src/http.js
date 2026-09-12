@@ -8,6 +8,57 @@ const UA = 'Mozilla/5.0 (compatible; bulk-psi-crux-report/1.0; +https://github.c
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * The proxy Node was actually told to use. Node only honours these variables
+ * when NODE_USE_ENV_PROXY is set, so without it the request went direct and
+ * the proxy is not a suspect.
+ */
+export function activeProxy(env = process.env) {
+  if (!env.NODE_USE_ENV_PROXY || env.NODE_USE_ENV_PROXY === '0') return null;
+  return env.HTTPS_PROXY || env.https_proxy || env.HTTP_PROXY || env.http_proxy || null;
+}
+
+/** Does NO_PROXY exempt this host, meaning the request bypassed the tunnel? */
+export function bypassesProxy(hostname, env = process.env) {
+  const list = env.NO_PROXY || env.no_proxy || '';
+  const host = String(hostname).toLowerCase();
+  return list.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean).some((entry) => {
+    if (entry === '*') return true;
+    const bare = entry.replace(/^\./, '');
+    return host === bare || host.endsWith('.' + bare);
+  });
+}
+
+/** Connection-level failures, as opposed to the server answering with an error. */
+const CONNECTION_CODES = new Set([
+  'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH',
+  'ENETUNREACH', 'EPIPE', 'EPROTO', 'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT',
+]);
+
+/**
+ * "fetch failed" on its own sends you to look at the site, which is usually
+ * innocent. With a proxy in the environment the browser has its own bypass list
+ * and opens the page happily while this request dies in the tunnel — so when a
+ * proxy is in play and the socket never connected, name it.
+ */
+export function describeFetchError(e, url, env = process.env) {
+  const cause = (e && e.cause) || {};
+  const code = cause.code || (e && e.code);
+  const proxy = activeProxy(env);
+
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* keep it empty */ }
+
+  if (proxy && code && CONNECTION_CODES.has(code) && !bypassesProxy(host, env)) {
+    return `${code} via the proxy at ${proxy} - NODE_USE_ENV_PROXY is on, so this did not go direct. ` +
+      `The site can be fine and still fail here: your browser has its own bypass list. ` +
+      (host ? `To reach ${host} directly, add it to NO_PROXY.` : 'Check NO_PROXY.');
+  }
+
+  if (code) return cause.message ? `${code} - ${cause.message}` : String(code);
+  return String((e && e.message) || e);
+}
+
+/**
  * @returns {Promise<{ok: boolean, status: number, body: any, error: string|null}>}
  */
 export async function request(url, {
@@ -60,7 +111,7 @@ export async function request(url, {
       return { ok: res.ok, status: res.status, body, error: null };
     } catch (e) {
       clearTimeout(timer);
-      lastErr = e.name === 'AbortError' ? `timeout after ${timeout}ms` : String(e.message || e);
+      lastErr = e.name === 'AbortError' ? `timeout after ${timeout}ms` : describeFetchError(e, url);
       if (attempt === retries) break;
     }
   }

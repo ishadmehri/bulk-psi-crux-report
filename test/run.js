@@ -15,6 +15,7 @@ import {
 import { psiReportLink } from '../src/psi.js';
 import { writeWorkbook, __test__ as WB } from '../src/report/workbook.js';
 import { Limiter } from '../src/limiter.js';
+import { activeProxy, bypassesProxy, describeFetchError } from '../src/http.js';
 
 let pass = 0, fail = 0;
 const ok = (label, cond, extra) => {
@@ -595,6 +596,52 @@ await writeWorkbook(nested, {
   cruxRows: [], trendRows: [], psiRows: [multiPsi[0]],
 });
 ok('--out into a folder that does not exist yet creates it', existsSync(nested));
+
+
+// ------------------------------------------------- proxy-aware fetch errors
+//
+// A tunnel that is down looks exactly like a site that is down, except the
+// browser opens the page fine because it has its own bypass list. Telling the
+// two apart from the message is the whole point of these.
+console.log('\n== 13. proxy-aware fetch errors ==');
+
+const econn = Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+const PROXIED = { NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://127.0.0.1:20808', NO_PROXY: 'localhost' };
+
+ok('a proxy only counts when NODE_USE_ENV_PROXY turns it on',
+  activeProxy(PROXIED) === 'http://127.0.0.1:20808'
+  && activeProxy({ HTTPS_PROXY: 'http://127.0.0.1:20808' }) === null
+  && activeProxy({ NODE_USE_ENV_PROXY: '0', HTTPS_PROXY: 'http://p' }) === null);
+
+ok('NO_PROXY matches the host itself, a subdomain, a leading dot and *',
+  bypassesProxy('dadsoo.com', { NO_PROXY: 'dadsoo.com' })
+  && bypassesProxy('www.dadsoo.com', { NO_PROXY: 'dadsoo.com' })
+  && bypassesProxy('dadsoo.com', { NO_PROXY: '.dadsoo.com' })
+  && bypassesProxy('anything.test', { NO_PROXY: '*' })
+  && !bypassesProxy('dadsoo.com.evil.test', { NO_PROXY: 'dadsoo.com' })
+  && !bypassesProxy('dadsoo.com', { NO_PROXY: 'elinweb.ir' }));
+
+const proxied = describeFetchError(econn, 'https://dadsoo.com/sitemap_index.xml', PROXIED);
+ok('a refused connection through a live proxy setting names the proxy and the fix',
+  proxied.includes('ECONNREFUSED') && proxied.includes('127.0.0.1:20808')
+  && proxied.includes('NO_PROXY') && proxied.includes('dadsoo.com'),
+  proxied);
+
+ok('a host already in NO_PROXY is not blamed on the proxy',
+  !describeFetchError(econn, 'https://dadsoo.com/x.xml',
+    { ...PROXIED, NO_PROXY: 'dadsoo.com' }).includes('proxy at'));
+
+ok('with no proxy configured the error is just the code',
+  describeFetchError(econn, 'https://dadsoo.com/x.xml', {}) === 'ECONNREFUSED');
+
+ok('a DNS failure is reported as itself, not as a proxy problem',
+  describeFetchError(
+    Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND nope.invalid' } }),
+    'https://nope.invalid/s.xml', PROXIED,
+  ) === 'ENOTFOUND - getaddrinfo ENOTFOUND nope.invalid');
+
+ok('an error with no code at all still produces its message',
+  describeFetchError(new Error('something else broke'), 'https://e.com/', PROXIED) === 'something else broke');
 
 rmSync(tmp, { recursive: true, force: true });
 
