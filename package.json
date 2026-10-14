@@ -4,9 +4,13 @@
   "description": "Bulk PageSpeed Insights + CrUX reports for a whole sitemap, into one Excel workbook",
   "type": "module",
   "main": "index.js",
-  "bin": { "bulk-psi-crux-report": "index.js" },
+  "bin": {
+    "bulk-psi-crux-report": "index.js"
+  },
   "scripts": {
-    "start": "node index.js",
+    "start": "node gui/server.js",
+    "cli": "node index.js",
+    "gui": "node gui/server.js",
     "test": "node test/run.js"
   },
   "keywords": [
@@ -23,9 +27,16 @@
   ],
   "author": "Iman Shadmehri (https://elinweb.ir)",
   "homepage": "https://github.com/ishadmehri/bulk-psi-crux-report#readme",
-  "repository": { "type": "git", "url": "git+https://github.com/ishadmehri/bulk-psi-crux-report.git" },
-  "bugs": { "url": "https://github.com/ishadmehri/bulk-psi-crux-report/issues" },
-  "engines": { "node": ">=20" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ishadmehri/bulk-psi-crux-report.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ishadmehri/bulk-psi-crux-report/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "exceljs": "^4.4.0"
   },

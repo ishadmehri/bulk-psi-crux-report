@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>گزارش سرعت صفحات</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --ink: #1c2430; --muted: #65718040;
+    --dim: #657180; --line: #dfe3e8; --accent: #2a3340; --link: #1155cc;
+    --good: #d9ead3; --mid: #fff2cc; --poor: #f4cccc; --none: #eee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.7 Vazirmatn, "Segoe UI", Tahoma, sans-serif;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  header .sp { flex: 1; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; }
+  .card h2 .n {
+    display: inline-grid; place-items: center; width: 22px; height: 22px; margin-inline-end: 8px;
+    background: var(--accent); color: #fff; border-radius: 50%; font-size: 12px; vertical-align: -4px;
+  }
+
+  label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 5px; }
+  input[type=text], input[type=number], input[type=password], textarea, select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px;
+    font: inherit; background: #fff; color: inherit;
+  }
+  textarea { min-height: 96px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid #b9c6d8; border-color: #b9c6d8; }
+
+  button {
+    font: inherit; padding: 9px 18px; border-radius: 7px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.sm { padding: 5px 11px; font-size: 13px; }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .row > * { flex: 1; min-width: 130px; }
+  .row > .narrow { flex: 0 0 110px; min-width: 110px; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tabs button {
+    background: #fff; color: var(--dim); border-color: var(--line); padding: 7px 14px; font-size: 14px;
+  }
+  .tabs button[aria-selected=true] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .hint { font-size: 13px; color: var(--dim); margin-top: 6px; }
+  .note { background: #fff8e1; border: 1px solid #f0d890; border-radius: 7px; padding: 10px 13px; font-size: 13.5px; margin-top: 12px; }
+  .bad  { background: #fdeaea; border-color: #e9b0b0; }
+  .okbox { background: #eef7ea; border-color: #b9d8a8; }
+
+  .bar { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .scroll { overflow: auto; max-height: 68vh; border: 1px solid var(--line); border-radius: 8px; }
+  th, td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid #eceef1; }
+  th {
+    position: sticky; top: 0; z-index: 2; background: var(--accent); color: #fff;
+    font-weight: 600; cursor: pointer; user-select: none;
+  }
+  th:hover { background: #3b4656; }
+  td.u { max-width: 330px; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: left; }
+  td.t { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
+  td.o { max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  td.n { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
+  tr.good td { background: var(--good); } tr.mid td { background: var(--mid); }
+  tr.poor td { background: var(--poor); } tr.none td { background: var(--none); }
+  td.c-good { background: var(--good) !important; } td.c-mid { background: var(--mid) !important; }
+  td.c-poor { background: var(--poor) !important; } td.c-none { background: var(--none) !important; }
+  a { color: var(--link); }
+
+  .chips { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; margin: 2px 0 0; }
+  .chip b { font-weight: 700; }
+  .kids { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; }
+  .kids label { display: flex; gap: 9px; align-items: center; padding: 5px 0; color: var(--ink); font-size: 14px; margin: 0; }
+  .kids label span { color: var(--dim); font-size: 12.5px; }
+  .kids input { width: auto; }
+  .hide { display: none !important; }
+  dialog { border: 1px solid var(--line); border-radius: 12px; padding: 20px; max-width: 540px; width: 92%; }
+  dialog::backdrop { background: #1c243088; }
+  ol { padding-inline-start: 22px; } ol li { margin-bottom: 7px; font-size: 14px; }
+  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; direction: ltr; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>گزارش سرعت صفحات</h1>
+  <div class="sp"></div>
+  <button class="ghost sm" id="btn-settings">تنظیمات</button>
+</header>
+
+<!-- ───────────────────────────── step 1: input ───────────────────────────── -->
+<section class="card" id="card-input">
+  <h2><span class="n">۱</span>ورودی</h2>
+
+  <div class="tabs" id="tabs">
+    <button data-mode="url" aria-selected="true">یک آدرس</button>
+    <button data-mode="list" aria-selected="false">لیست آدرس</button>
+    <button data-mode="file" aria-selected="false">فایل txt / csv</button>
+    <button data-mode="sitemap" aria-selected="false">sitemap</button>
+    <button data-mode="sitemap-index" aria-selected="false">sitemap index</button>
+  </div>
+
+  <div id="in-url">
+    <label for="f-url">آدرس صفحه</label>
+    <input type="text" id="f-url" dir="ltr" placeholder="https://example.com/page" spellcheck="false">
+  </div>
+
+  <div id="in-list" class="hide">
+    <label for="f-list">هر خط یک آدرس (یا با کاما جدا کن). خط خالی و خطی که با # شروع شود نادیده گرفته می‌شود.</label>
+    <textarea id="f-list" dir="ltr" spellcheck="false" placeholder="https://example.com/&#10;example.com/blog/&#10;# این خط نادیده گرفته می‌شود"></textarea>
+  </div>
+
+  <div id="in-file" class="hide">
+    <label for="f-file">فایل متنی یا CSV</label>
+    <input type="file" id="f-file" accept=".txt,.csv,.tsv,text/plain,text/csv">
+    <div class="hint">در فایل CSV لازم نیست آدرس در ستون اول باشد — خودش ستونی را که آدرس است پیدا می‌کند و سرصفحه را رد می‌کند.</div>
+  </div>
+
+  <div id="in-sitemap" class="hide">
+    <label for="f-sitemap">آدرس sitemap</label>
+    <input type="text" id="f-sitemap" dir="ltr" placeholder="https://example.com/post-sitemap.xml" spellcheck="false">
+  </div>
+
+  <div id="in-sitemap-index" class="hide">
+    <label for="f-index">آدرس sitemap index</label>
+    <input type="text" id="f-index" dir="ltr" placeholder="https://example.com/sitemap_index.xml" spellcheck="false">
+    <div class="hint">فرزندانش لیست می‌شوند تا انتخاب کنی کدام‌ها تست شوند.</div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <div class="narrow">
+      <label for="f-max">سقف آدرس</label>
+      <input type="text" id="f-max" value="50" dir="ltr">
+    </div>
+    <div>
+      <label for="f-devices">دستگاه</label>
+      <select id="f-devices">
+        <option value="mobile">فقط موبایل</option>
+        <option value="mobile,desktop">موبایل و دسکتاپ</option>
+        <option value="desktop">فقط دسکتاپ</option>
+      </select>
+    </div>
+    <div>
+      <label for="f-filter">فیلتر آدرس (اختیاری)</label>
+      <input type="text" id="f-filter" dir="ltr" placeholder="/blog/  یا  /regex/" spellcheck="false">
+    </div>
+    <div>
+      <label for="f-crux">داده‌ی کاربر واقعی (CrUX)</label>
+      <select id="f-crux">
+        <option value="none">نه، فقط PageSpeed</option>
+        <option value="origin">بله، سطح دامنه + روند</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="hint" style="margin-top:10px">
+    سقف را روی <code>all</code> بگذار تا همه‌ی آدرس‌ها تست شوند.
+  </div>
+
+  <div class="actions">
+    <button id="btn-check">بررسی ورودی</button>
+    <span id="check-state" class="hint"></span>
+  </div>
+
+  <div id="kids-box" class="hide" style="margin-top:16px">
+    <label>کدام sitemapها؟</label>
+    <div class="kids" id="kids"></div>
+    <div class="actions">
+      <button class="ghost sm" id="kids-all">همه</button>
+      <button class="ghost sm" id="kids-none">هیچ‌کدام</button>
+      <button id="kids-ok">تأیید انتخاب</button>
+    </div>
+  </div>
+
+  <div id="plan" class="hide">
+    <div class="note okbox" id="plan-text"></div>
+    <div class="note bad hide" id="plan-capped"></div>
+    <div class="note hide" id="plan-crowd"></div>
+    <div class="actions">
+      <button id="btn-run">شروع تست</button>
+      <button class="ghost" id="btn-back">تغییر ورودی</button>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────────── step 2: results ──────────────────────────── -->
+<section class="card hide" id="card-run">
+  <h2><span class="n">۲</span>نتایج</h2>
+
+  <div class="chips" id="counts"></div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="hint" id="run-state"></div>
+
+  <div class="note hide" id="run-error"></div>
+  <div class="note hide" id="origin-box"></div>
+
+  <div class="actions">
+    <button id="btn-export">ذخیره به اکسل</button>
+    <button class="ghost hide" id="btn-reveal">نمایش فایل در پوشه</button>
+    <button class="ghost" id="btn-restart">تست جدید</button>
+    <span class="hint" id="export-state"></span>
+  </div>
+
+  <div class="scroll" style="margin-top:14px">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="hint">روی سرستون کلیک کن تا مرتب شود. پیش‌فرض: بدترین نمره بالا.</div>
+</section>
+
+</div>
+
+<!-- ───────────────────────────── settings dialog ─────────────────────────── -->
+<dialog id="dlg">
+  <h2 style="margin:0 0 12px;font-size:16px">تنظیمات</h2>
+
+  <label for="s-key">کلید API گوگل</label>
+  <input type="password" id="s-key" dir="ltr" placeholder="AIza..." spellcheck="false" autocomplete="off">
+  <div class="hint" id="key-state"></div>
+
+  <div class="actions">
+    <button id="s-save">ذخیره</button>
+    <button class="ghost" id="s-test">تست کلید</button>
+    <button class="ghost" id="s-close">بستن</button>
+  </div>
+
+  <details style="margin-top:18px">
+    <summary style="cursor:pointer;font-size:14px">کلید را از کجا بگیرم؟</summary>
+    <ol style="margin-top:10px">
+      <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">یک پروژه بساز</a> (اگر نداری).</li>
+      <li><a href="https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com" target="_blank" rel="noreferrer">PageSpeed Insights API</a> را Enable کن.</li>
+      <li><a href="https://console.cloud.google.com/apis/library/chromeuxreport.googleapis.com" target="_blank" rel="noreferrer">Chrome UX Report API</a> را هم Enable کن (برای گزینه‌ی CrUX).</li>
+      <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Credentials → Create credentials → API key</a>.</li>
+      <li>در <b>Application restrictions</b> گزینه‌ی <code>None</code> را نگه دار — اگر روی HTTP referrers یا IP بگذاری، درخواست سرور‌به‌سرور رد می‌شود.</li>
+    </ol>
+    <div class="hint">کلید فقط روی همین کامپیوتر ذخیره می‌شود و هیچ‌جا فرستاده نمی‌شود جز خودِ گوگل.</div>
+  </details>
+</dialog>
+
+<script type="module">
+import { FILL, lighthouseBand } from '/score.js';
+
+// The same palette the workbook paints with, minus Excel's alpha byte.
+for (const [k, argb] of Object.entries(FILL)) {
+  document.documentElement.style.setProperty('--' + k, '#' + argb.slice(2));
+}
+
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const $ = (id) => document.getElementById(id);
+
+async function api(path, body) {
+  const res = await fetch('/api' + path + '?t=' + TOKEN, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'خطای ناشناخته');
+  return data;
+}
+
+// ───────────────────────────────── input state
+
+let mode = 'url';
+let fileText = '', fileName = '';
+let children = null, picked = null;
+
+$('tabs').onclick = (e) => {
+  const btn = e.target.closest('button[data-mode]');
+  if (!btn) return;
+  mode = btn.dataset.mode;
+  for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b === btn));
+  for (const id of ['url', 'list', 'file', 'sitemap', 'sitemap-index']) {
+    $('in-' + id).classList.toggle('hide', id !== (mode === 'list' ? 'list' : mode));
+  }
+  reset();
+};
+
+$('f-file').onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  fileText = await f.text();
+  fileName = f.name;
+  reset();
+};
+
+/** What the form currently describes, in the shape the server wants. */
+function payload() {
+  const devices = $('f-devices').value.split(',');
+  const base = {
+    devices, max: $('f-max').value.trim() || '50',
+    filter: $('f-filter').value.trim() || undefined,
+    crux: $('f-crux').value,
+  };
+  if (mode === 'url') return { ...base, mode: 'url', value: $('f-url').value.trim() };
+  if (mode === 'list') return { ...base, mode: 'url', value: $('f-list').value };
+  if (mode === 'file') return { ...base, mode: 'url', value: fileText, filename: fileName };
+  if (mode === 'sitemap') return { ...base, mode: 'sitemap', value: $('f-sitemap').value.trim() };
+  return { ...base, mode: 'sitemap-index', value: $('f-index').value.trim(), pick: picked || undefined };
+}
+
+function reset() {
+  $('plan').classList.add('hide');
+  $('kids-box').classList.add('hide');
+  $('check-state').textContent = '';
+  children = null; picked = null;
+}
+
+// ───────────────────────────────── step 1: check
+
+$('btn-check').onclick = check;
+
+async function check() {
+  const body = payload();
+  if (!body.value || !String(body.value).trim()) {
+    return say('check-state', mode === 'file' ? 'اول یک فایل انتخاب کن.' : 'ورودی خالی است.', true);
+  }
+  $('btn-check').disabled = true;
+  say('check-state', 'در حال بررسی…');
+  try {
+    const out = await api('/resolve', body);
+
+    if (out.needPick) {
+      children = out.children;
+      renderKids();
+      say('check-state', `${children.length} sitemap پیدا شد — انتخاب کن.`);
+      return;
+    }
+    showPlan(out);
+    say('check-state', '');
+  } catch (e) {
+    say('check-state', e.message, true);
+  } finally {
+    $('btn-check').disabled = false;
+  }
+}
+
+function renderKids() {
+  $('kids').innerHTML = children.map((c, i) => `
+    <label>
+      <input type="checkbox" value="${i}" ${c.error || !c.count ? 'disabled' : 'checked'}>
+      <b>${esc(c.name)}</b>
+      <span>${c.error ? 'خطا: ' + esc(c.error) : c.nested ? 'تودرتو — پشتیبانی نمی‌شود' : c.count + ' آدرس'}</span>
+    </label>`).join('');
+  $('kids-box').classList.remove('hide');
+}
+
+$('kids-all').onclick = () => setKids(true);
+$('kids-none').onclick = () => setKids(false);
+const setKids = (on) => $('kids').querySelectorAll('input:not(:disabled)').forEach((i) => { i.checked = on; });
+
+$('kids-ok').onclick = () => {
+  picked = [...$('kids').querySelectorAll('input:checked')].map((i) => Number(i.value));
+  if (!picked.length) return say('check-state', 'حداقل یک sitemap را انتخاب کن.', true);
+  check();
+};
+
+function showPlan(out) {
+  const p = out.plan;
+  const groups = out.groups.map((g) => `${esc(g.name)} (${g.urls})`).join('، ');
+  $('plan-text').innerHTML =
+    `<b>${esc(out.siteLabel)}</b> — ${p.totalUrls} آدرس در ${out.groups.length} گروه: ${groups}<br>` +
+    `${p.psiCalls} تست PageSpeed با ${p.psiConcurrency} درخواست هم‌زمان — حدود <b>${p.etaMinutes} دقیقه</b>` +
+    (p.cruxCalls ? `<br>${p.cruxCalls} درخواست CrUX` : '');
+
+  const cap = $('plan-capped');
+  if (p.capped.length) {
+    const dropped = p.capped.reduce((n, g) => n + (g.of - g.testing), 0);
+    cap.innerHTML = `<b>سقف ${esc($('f-max').value)} باعث شد ${dropped} آدرس تست نشود:</b><br>` +
+      p.capped.map((g) => `${esc(g.name)}: ${g.testing} از ${g.of}`).join('<br>') +
+      '<br>سقف را روی <code>all</code> بگذار تا همه تست شوند.';
+  }
+  cap.classList.toggle('hide', !p.capped.length);
+  $('plan-crowd').classList.toggle('hide', !p.crowding);
+  if (p.crowding) {
+    $('plan-crowd').textContent =
+      `${p.psiConcurrency} اجرای هم‌زمان یعنی ${p.psiConcurrency} بار خزیدن هم‌زمان روی سرور خودت. ` +
+      'زمان پاسخش بد می‌شود و نمره‌ها بدتر از حالت عادی برمی‌گردند.';
+  }
+  $('plan').classList.remove('hide');
+}
+
+$('btn-back').onclick = reset;
+
+// ───────────────────────────────── step 2: run
+
+const COLS = [
+  ['', (r) => `<a href="${psiLink(r)}" target="_blank" rel="noreferrer">تست زنده</a>`, ''],
+  ['آدرس', (r) => esc(r.url), 'u'],
+  ['عنوان', (r) => esc(r.title || ''), 't'],
+  ['دستگاه', (r) => (r.device === 'Desktop' ? 'دسکتاپ' : 'موبایل'), ''],
+  ['نمره', (r) => (r.score ?? '—'), 'n'],
+  ['حکم', (r) => verdictFa(r.verdict), ''],
+  ['LCP', (r) => num(r.values?.LCP), 'n LCP'],
+  ['TBT', (r) => num(r.values?.TBT), 'n TBT'],
+  ['CLS', (r) => num(r.values?.CLS), 'n CLS'],
+  ['FCP', (r) => num(r.values?.FCP), 'n FCP'],
+  ['Speed Index', (r) => num(r.values?.SI), 'n SI'],
+  ['TTFB', (r) => num(r.values?.TTFB), 'n TTFB'],
+  ['وضعیت', (r) => esc(r.status || ''), 'o'],
+  ['بیشترین فرصت بهبود', (r) => esc(r.opportunities || ''), 'o'],
+  ['صرفه‌جویی (ms)', (r) => num(r.savingsMs), 'n'],
+  ['منبع', (r) => esc(r.sourceGroup || ''), 't'],
+];
+
+const num = (v) => (v === null || v === undefined ? '—' : v);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const psiLink = (r) =>
+  'https://pagespeed.web.dev/analysis?url=' + encodeURIComponent(r.url) +
+  '&form_factor=' + (r.device === 'Desktop' ? 'desktop' : 'mobile');
+const verdictFa = (v) => ({ GOOD: 'خوب', 'NEEDS WORK': 'نیاز به کار', POOR: 'ضعیف', ERROR: 'خطا' }[v] || v);
+const rowBand = (v) => (v === 'GOOD' ? 'good' : v === 'NEEDS WORK' ? 'mid' : v === 'POOR' ? 'poor' : 'none');
+
+let rows = [], sortCol = 4, sortDir = 1, running = false;
+
+$('head').innerHTML = COLS.map(([h], i) => `<th data-i="${i}">${h}</th>`).join('');
+$('head').onclick = (e) => {
+  const th = e.target.closest('th');
+  if (!th) return;
+  const i = Number(th.dataset.i);
+  sortDir = i === sortCol ? -sortDir : 1;
+  sortCol = i;
+  draw();
+};
+
+$('btn-run').onclick = async () => {
+  $('card-run').classList.remove('hide');
+  $('card-run').scrollIntoView({ behavior: 'smooth' });
+  rows = []; running = true;
+  $('rows').innerHTML = '';
+  $('run-error').classList.add('hide');
+  $('origin-box').classList.add('hide');
+  $('btn-reveal').classList.add('hide');
+  $('btn-run').disabled = true;
+  $('btn-export').disabled = true;
+  say('export-state', '');
+
+  try {
+    const res = await fetch('/api/run?t=' + TOKEN, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload()),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'اجرا شروع نشد');
+
+    // One JSON event per line, read as it arrives — the table fills during the
+    // run instead of after it.
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) if (line.trim()) onEvent(JSON.parse(line));
+    }
+  } catch (e) {
+    fail(e.message);
+  } finally {
+    running = false;
+    $('btn-run').disabled = false;
+    $('btn-export').disabled = !rows.length;
+  }
+};
+
+const PHASE_FA = {
+  sitemaps: 'خواندن sitemapها', crux: 'داده‌ی کاربر واقعی', domain: 'داده‌ی دامنه',
+  titles: 'عنوان صفحات', trend: 'روند هفتگی', psi: 'تست PageSpeed',
+};
+
+function onEvent(e) {
+  if (e.type === 'phase') {
+    $('bar').style.width = (e.done / e.total * 100) + '%';
+    say('run-state', `${PHASE_FA[e.phase] || e.phase} — ${e.done} از ${e.total}`);
+  } else if (e.type === 'row') {
+    rows.push(e.row);
+    draw();
+    counts();
+  } else if (e.type === 'done') {
+    $('bar').style.width = '100%';
+    say('run-state', `تمام شد — ${rows.length} تست`);
+    counts();
+    if (e.origins?.length) {
+      $('origin-box').innerHTML = '<b>کاربران واقعی (کل دامنه):</b><br>' + e.origins.map((o) =>
+        `${esc(o.origin.replace(/^https?:\/\//, ''))} / ${o.device === 'Desktop' ? 'دسکتاپ' : 'موبایل'}: ` +
+        (o.cwv === 'NO DATA' ? 'داده‌ای نیست' : `${o.cwv} (نمره ${o.score}، LCP ${o.values?.LCP ?? '—'}ms)`)).join('<br>');
+      $('origin-box').classList.remove('hide');
+    }
+  } else if (e.type === 'error') {
+    fail(e.message);
+  }
+}
+
+function counts() {
+  const n = (v) => rows.filter((r) => r.verdict === v).length;
+  $('counts').innerHTML = [
+    ['خوب', n('GOOD'), 'good'], ['نیاز به کار', n('NEEDS WORK'), 'mid'],
+    ['ضعیف', n('POOR'), 'poor'], ['خطا', n('ERROR'), 'none'],
+  ].map(([label, v, band]) =>
+    `<span class="chip" style="background:var(--${band});padding:3px 10px;border-radius:5px">${label} <b>${v}</b></span>`
+  ).join('');
+}
+
+function draw() {
+  const key = COLS[sortCol][1];
+  const sorted = [...rows].sort((a, b) => {
+    // Worst score first by default: an unscored row is worse than a 0.
+    if (sortCol === 4) {
+      return ((a.score ?? -1) - (b.score ?? -1)) * sortDir || a.url.localeCompare(b.url);
+    }
+    const [x, y] = [key(a), key(b)].map((v) => String(v).replace(/<[^>]*>/g, ''));
+    const [nx, ny] = [parseFloat(x), parseFloat(y)];
+    if (Number.isFinite(nx) && Number.isFinite(ny)) return (nx - ny) * sortDir;
+    return x.localeCompare(y, 'fa') * sortDir;
+  });
+
+  $('rows').innerHTML = sorted.map((r) => {
+    const band = rowBand(r.verdict);
+    return `<tr class="${band}">` + COLS.map(([, render, cls]) => {
+      // A red row still keeps a green cell for any metric that did pass, the
+      // same rule the workbook paints by.
+      const metric = (cls.split(' ')[1] || '');
+      const cellBand = metric && r.verdict !== 'ERROR'
+        ? ' c-' + lighthouseBand(r.auditScores?.[metric])
+        : '';
+      return `<td class="${cls.split(' ')[0]}${cellBand}">${render(r)}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function fail(msg) {
+  $('run-error').textContent = msg;
+  $('run-error').className = 'note bad';
+}
+
+$('btn-restart').onclick = () => {
+  $('card-run').classList.add('hide');
+  reset();
+  $('card-input').scrollIntoView({ behavior: 'smooth' });
+};
+
+$('btn-export').onclick = async () => {
+  $('btn-export').disabled = true;
+  say('export-state', 'در حال نوشتن فایل…');
+  try {
+    const out = await api('/export', {});
+    say('export-state', out.path);
+    $('btn-reveal').classList.remove('hide');
+  } catch (e) {
+    say('export-state', e.message, true);
+  } finally {
+    $('btn-export').disabled = false;
+  }
+};
+
+$('btn-reveal').onclick = () => api('/reveal', {}).catch((e) => say('export-state', e.message, true));
+
+// ───────────────────────────────── settings
+
+$('btn-settings').onclick = async () => {
+  const s = await api('/settings');
+  say('key-state', s.hasKey ? `کلیدی ذخیره شده است (${s.keyTail})` : 'هنوز کلیدی ذخیره نشده.');
+  $('dlg').showModal();
+};
+$('s-close').onclick = () => $('dlg').close();
+
+$('s-save').onclick = async () => {
+  const apiKey = $('s-key').value.trim();
+  if (!apiKey) return say('key-state', 'کلید خالی است.', true);
+  await api('/settings', { apiKey });
+  $('s-key').value = '';
+  say('key-state', 'ذخیره شد. حالا «تست کلید» را بزن.');
+};
+
+$('s-test').onclick = async () => {
+  say('key-state', 'در حال تست با یک درخواست واقعی…');
+  const body = $('s-key').value.trim() ? { apiKey: $('s-key').value.trim() } : {};
+  const out = await api('/check-key', body);
+  say('key-state', out.ok ? 'کلید کار می‌کند.' : `کار نکرد — ${out.detail}`, !out.ok);
+};
+
+function say(id, text, bad) {
+  const el = $(id);
+  el.textContent = text;
+  el.style.color = bad ? '#b3261e' : '';
+}
+
+// Nudge first-time users to the key before they hit a wall 40 minutes in.
+api('/settings').then((s) => { if (!s.hasKey) $('btn-settings').click(); });
+</script>
+</body>
+</html>

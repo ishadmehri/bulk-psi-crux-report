@@ -1,4 +1,5 @@
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
@@ -7,7 +8,8 @@ import { parseArgs, buildConfig, safeFilePart } from '../src/config.js';
 import {
   makeFilter, extractLocs, isIndexDocument, sheetNameFromUrl, uniqueNames, groupsFromChildren,
 } from '../src/sources/sitemap.js';
-import { groupFromTextFile } from '../src/sources/textfile.js';
+import { groupFromTextFile, groupFromUrls, urlsFromText } from '../src/sources/textfile.js';
+import { selectChildren, estimate } from '../src/run.js';
 import {
   THRESHOLDS, normalise, metricScore, band, overallScore, cwvVerdict, goodMap,
   lighthouseBand, psiVerdict, textSparkline,
@@ -642,6 +644,137 @@ ok('a DNS failure is reported as itself, not as a proxy problem',
 
 ok('an error with no code at all still produces its message',
   describeFetchError(new Error('something else broke'), 'https://e.com/', PROXIED) === 'something else broke');
+
+
+// ============================================================ 13. new inputs
+
+console.log('\n== 13. pasted URLs, and CSV files ==');
+
+// A comma between two URLs separates them; a comma in a CSV row separates a
+// URL from its other columns. Same character, opposite meaning.
+ok('a comma-separated paste yields every URL, not just the first',
+  eq(groupFromUrls('example.com, https://example.com/x, foo.ir')[0].urls,
+     ['https://example.com', 'https://example.com/x', 'https://foo.ir']));
+
+ok('a newline-separated paste works the same',
+  eq(groupFromUrls('example.com\nhttps://example.com/x')[0].urls,
+     ['https://example.com', 'https://example.com/x']));
+
+ok('a single URL names its group after the host',
+  groupFromUrls('  www.dadsoo.com/page  ')[0].name === 'dadsoo.com',
+  groupFromUrls('  www.dadsoo.com/page  ')[0].name);
+
+ok('junk is rejected rather than turned into https://junk',
+  await throws(() => groupFromUrls('not a url at all'), /No valid URLs/));
+
+// Real exports lead with an id, so the URL is rarely the first column.
+const csvRows = urlsFromText('id,url,title\n7,https://a.com/p,"Hi, there"\n8,https://b.com/q,x', { csv: true });
+ok('a CSV finds the URL column wherever it sits',
+  eq(csvRows.urls, ['https://a.com/p', 'https://b.com/q']), csvRows.urls);
+ok('a CSV header row is skipped without being reported as junk',
+  csvRows.skipped.length === 0, csvRows.skipped);
+
+const csvPath = join(tmp, 'pages.csv');
+writeFileSync(csvPath, 'url,clicks\nhttps://a.com/,12\nhttps://b.com/,3\n');
+const csvGroup = await groupFromTextFile(csvPath);
+ok('a .csv file on disk is read as CSV, not as plain lines',
+  eq(csvGroup[0].urls, ['https://a.com/', 'https://b.com/']), csvGroup[0].urls);
+
+// --max must still report the honest total it did not test.
+const capped = urlsFromText('https://a.com/1\nhttps://a.com/2\nhttps://a.com/3', { max: 2 });
+ok('a capped paste still counts what it left out',
+  capped.urls.length === 2 && capped.total === 3, capped);
+
+// ===================================================== 14. sitemap selection
+
+console.log('\n== 14. sitemap index selection ==');
+
+const kids = [{ name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }];
+ok('"all" selects every child', selectChildren(kids, 'all').length === 4);
+ok('"1,3" selects those two, in order',
+  eq(selectChildren(kids, '1,3').map((c) => c.name), ['a', 'c']));
+ok('"2-4" selects the range',
+  eq(selectChildren(kids, '2-4').map((c) => c.name), ['b', 'c', 'd']));
+ok('an index array (what a GUI ticks) selects by position',
+  eq(selectChildren(kids, [0, 3]).map((c) => c.name), ['a', 'd']));
+ok('a selection naming nothing real is an error, not an empty run',
+  await throws(() => selectChildren(kids, '9'), /did not select/));
+
+
+// ================================================================ 15. the GUI
+
+console.log('\n== 15. GUI server ==');
+
+// Keep the suite away from the real settings file.
+process.env.BPCR_CONFIG_DIR = join(tmp, 'config');
+
+const { start } = await import('../gui/server.js');
+const gui = await start({ port: 0, open: false });
+const base = gui.url.split('/?')[0];
+const T = gui.token;
+
+const call = async (path, body, init = {}) => {
+  const res = await fetch(base + path + (path.includes('?') ? '&' : '?') + 't=' + (init.token ?? T), {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json', ...(init.headers || {}) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+};
+
+// A page on any website can POST to 127.0.0.1, so the token is the actual lock.
+ok('no token is refused', (await call('/api/settings', undefined, { token: '' })).status === 403);
+ok('a wrong token is refused', (await call('/api/settings', undefined, { token: 'nope' })).status === 403);
+
+// A hostname resolved to 127.0.0.1 must not be able to pose as this origin.
+// fetch() refuses to set Host, so this has to go out as a raw request or the
+// test would quietly check nothing.
+const rebindStatus = await new Promise((done) => {
+  const req = httpRequest({
+    host: '127.0.0.1', port: Number(new URL(base).port), path: '/api/settings?t=' + T,
+    headers: { host: 'evil.example.com' },
+  }, (res) => { res.resume(); done(res.statusCode); });
+  req.on('error', () => done(0));
+  req.end();
+});
+ok('a non-loopback Host header is refused', rebindStatus === 403, rebindStatus);
+
+ok('the UI is served', (await fetch(base + '/')).status === 200);
+ok('score.js is served to the browser so colours come from one place',
+  (await (await fetch(base + '/score.js')).text()).includes('export function lighthouseBand'));
+
+await call('/api/settings', { apiKey: 'AIzaTESTKEY-not-real-000000' });
+const saved = (await call('/api/settings')).body;
+ok('a saved key is remembered', saved.hasKey === true);
+ok('the key itself is never handed back out',
+  !JSON.stringify(saved).includes('AIzaTESTKEY'), saved);
+ok('only its tail is shown, to confirm which key is in use', saved.keyTail === '…000000', saved.keyTail);
+
+// Pricing a run must not need the network when the URLs were pasted in.
+const priced = (await call('/api/resolve', {
+  mode: 'url', value: 'example.com, example.com/x, example.com/y', devices: ['mobile'], max: '50', crux: 'none',
+})).body;
+ok('a pasted list is priced without a run', priced.plan.totalUrls === 3 && priced.plan.psiCalls === 3, priced.plan);
+ok('the report is named after the first host', priced.siteLabel === 'example.com', priced.siteLabel);
+
+const cappedPlan = (await call('/api/resolve', {
+  mode: 'url', value: 'a.com/1, a.com/2, a.com/3', devices: ['mobile'], max: '2', crux: 'none',
+})).body;
+ok('a cap that drops URLs is reported, not hidden',
+  cappedPlan.plan.capped.length === 1 && cappedPlan.plan.capped[0].of === 3, cappedPlan.plan.capped);
+
+ok('two devices double the PageSpeed calls', (await call('/api/resolve', {
+  mode: 'url', value: 'a.com/1, a.com/2', devices: ['mobile', 'desktop'], max: '50', crux: 'none',
+})).body.plan.psiCalls === 4);
+
+const junk = await call('/api/resolve', { mode: 'url', value: 'this is not a url', devices: ['mobile'], max: '50', crux: 'none' });
+ok('junk input is an error, not an empty run', junk.status === 400 && /No valid URLs/.test(junk.body.error), junk.body);
+
+const early = await call('/api/export', {});
+ok('exporting before any run says so instead of writing an empty file',
+  early.status === 400 && /run a test first/i.test(early.body.error), early.body);
+
+await new Promise((r) => gui.server.close(r));
 
 rmSync(tmp, { recursive: true, force: true });
 

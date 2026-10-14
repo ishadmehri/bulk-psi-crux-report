@@ -1,18 +1,8 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import ExcelJS from 'exceljs';
-import { band, lighthouseBand, textSparkline } from '../score.js';
+import { band, lighthouseBand, textSparkline, FILL } from '../score.js';
 import { psiReportLink } from '../psi.js';
-
-/** Same palette as the Sheets version, as ARGB. */
-const FILL = {
-  good: 'FFD9EAD3',
-  mid:  'FFFFF2CC',
-  poor: 'FFF4CCCC',
-  none: 'FFEEEEEE',
-  head: 'FF2A3340',
-  plain: 'FFFFFFFF',
-};
 
 const fill = (key) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[key] } });
 const LINK_FONT = { color: { argb: 'FF1155CC' }, underline: true };

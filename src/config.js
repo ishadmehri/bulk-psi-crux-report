@@ -62,8 +62,13 @@ export function labelFor(source, target) {
     const base = String(target).split(/[\\/]/).pop() || 'urls';
     return safeFilePart(base.replace(/\.[^.]+$/, '')) || 'urls';
   }
+  // A pasted list is not one URL, so name the report after its first entry.
+  // That entry may also have been typed without a scheme, which URL needs.
+  let first = String(target).split(/[\n,]/)[0].trim();
+  if (first && !/^https?:\/\//i.test(first)) first = 'https://' + first;
+
   try {
-    return safeFilePart(new URL(target).hostname.replace(/^www\./i, '')) || 'site';
+    return safeFilePart(new URL(first).hostname.replace(/^www\./i, '')) || 'site';
   } catch {
     return 'site';
   }
@@ -80,7 +85,7 @@ export function labelFor(source, target) {
 const BOOLEAN_FLAGS = ['help', 'h', 'version', 'no-trend', 'quiet', 'no-origin-fallback'];
 const VALUE_OPTIONAL_FLAGS = ['psi', 'crux', 'pick'];
 const VALUE_FLAGS = [
-  'sitemap', 'sitemap-index', 'file', 'max', 'filter', 'devices',
+  'sitemap', 'sitemap-index', 'file', 'url', 'max', 'filter', 'devices',
   'trend-weeks', 'out', 'concurrency', 'psi-concurrency', 'key', 'psi-key',
 ];
 const ALL_FLAGS = [...BOOLEAN_FLAGS, ...VALUE_OPTIONAL_FLAGS, ...VALUE_FLAGS];
@@ -142,13 +147,14 @@ export function checkFlags(args) {
 export function buildConfig(args) {
   checkFlags(args);
 
-  const sources = ['sitemap', 'sitemap-index', 'file'].filter((k) => args[k] && args[k] !== true);
+  const sources = ['sitemap', 'sitemap-index', 'file', 'url'].filter((k) => args[k] && args[k] !== true);
   if (sources.length === 0) {
     throw new Error(
       'Pick an input source:\n' +
       '  --sitemap <url>          a flat sitemap\n' +
       '  --sitemap-index <url>    a sitemap index (listed so you can choose)\n' +
-      '  --file <path>            a text file, one URL per line'
+      '  --file <path>            a text or CSV file, one URL per line\n' +
+      '  --url <url>              a single URL, or several separated by commas'
     );
   }
   if (sources.length > 1) {
@@ -257,7 +263,8 @@ Input source (pick one):
   --sitemap <url>        a flat sitemap; every URL in it is tested
   --sitemap-index <url>  a sitemap index; children are listed so you can choose
                          each chosen sitemap becomes its own worksheet
-  --file <path>          text file, one URL per line (blank and # lines ignored)
+  --file <path>          text or CSV file, one URL per line (blank/# ignored)
+  --url <url>            one URL, or several separated by commas
 
 Options:
   --pick <sel>           skip the prompt for a sitemap index: 1,3 or 2-4 or all

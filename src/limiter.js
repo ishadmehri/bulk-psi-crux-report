@@ -54,14 +54,19 @@ export class Limiter {
     }
   }
 
-  /** Map with the limiter applied; results keep input order. */
+  /**
+   * Map with the limiter applied; results keep input order.
+   *
+   * onProgress fires as each item lands, with that item and its result, so a
+   * live table can fill in completion order while the array stays ordered.
+   */
   async map(items, fn, onProgress) {
     let done = 0;
     return Promise.all(items.map((item, i) =>
       this.run(async () => {
         const out = await fn(item, i);
         done++;
-        if (onProgress) onProgress(done, items.length);
+        if (onProgress) onProgress(done, items.length, out, item);
         return out;
       })
     ));

@@ -7,6 +7,20 @@
  * a weighted roll-up of real-user p75 values. It will not match PageSpeed and
  * is not supposed to.
  */
+/**
+ * One palette for every band, so the workbook and the on-screen table cannot
+ * drift apart. ARGB because that is what Excel wants; the browser slices the
+ * alpha off.
+ */
+export const FILL = {
+  good:  'FFD9EAD3',
+  mid:   'FFFFF2CC',
+  poor:  'FFF4CCCC',
+  none:  'FFEEEEEE',
+  head:  'FF2A3340',
+  plain: 'FFFFFFFF',
+};
+
 export const THRESHOLDS = {
   LCP:  { good: 2500, poor: 4000, weight: 30, unit: 'ms' },
   INP:  { good: 200,  poor: 500,  weight: 30, unit: 'ms' },
