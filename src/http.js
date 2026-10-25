@@ -59,6 +59,13 @@ export function describeFetchError(e, url, env = process.env) {
 }
 
 /**
+ * What a cancelled request returns. It is not an error the user should see in
+ * a status column — they are the one who stopped it.
+ */
+export const CANCELLED = 'cancelled';
+const CANCELLED_RESULT = Object.freeze({ ok: false, status: 0, body: null, error: CANCELLED });
+
+/**
  * @returns {Promise<{ok: boolean, status: number, body: any, error: string|null}>}
  */
 export async function request(url, {
@@ -69,17 +76,28 @@ export async function request(url, {
   retries = 2,
   parse = 'json',        // 'json' | 'text'
   retryOn = [408, 429, 500, 502, 503, 504],
+  signal = null,         // the caller's cancel, separate from our timeout
 } = {}) {
   let lastErr = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (signal && signal.aborted) return CANCELLED_RESULT;
     if (attempt > 0) {
       // 1s, 3s, 9s — enough to ride out a rate-limit blip without stalling a run
       await sleep(1000 * Math.pow(3, attempt - 1));
+      if (signal && signal.aborted) return CANCELLED_RESULT;
     }
 
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeout);
+    // Two reasons to abort the same fetch, and they mean different things to
+    // the person reading the result, so track which one fired.
+    const onCancel = () => ac.abort();
+    if (signal) signal.addEventListener('abort', onCancel, { once: true });
+    const done = () => {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener('abort', onCancel);
+    };
 
     try {
       const res = await fetch(url, {
@@ -92,7 +110,7 @@ export async function request(url, {
         },
         ...(json ? { body: JSON.stringify(json) } : {}),
       });
-      clearTimeout(timer);
+      done();
 
       let body = null;
       if (parse === 'text') {
@@ -110,7 +128,8 @@ export async function request(url, {
 
       return { ok: res.ok, status: res.status, body, error: null };
     } catch (e) {
-      clearTimeout(timer);
+      done();
+      if (signal && signal.aborted) return CANCELLED_RESULT;
       lastErr = e.name === 'AbortError' ? `timeout after ${timeout}ms` : describeFetchError(e, url);
       if (attempt === retries) break;
     }

@@ -1,4 +1,4 @@
-import { request, apiErrorMessage } from './http.js';
+import { request, apiErrorMessage, CANCELLED } from './http.js';
 import { psiVerdict } from './score.js';
 
 const PSI_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
@@ -11,6 +11,9 @@ const AUDIT = {
   FCP:  'first-contentful-paint',
   SI:   'speed-index',
   TTFB: 'server-response-time',
+  // Not a Core Web Vital, but it is the number that explains most of the
+  // others, and Lighthouse scores it so it colours itself.
+  BYTES: 'total-byte-weight',
 };
 
 /** Audits that carry an estimated saving — the actionable half of a PSI report. */
@@ -27,8 +30,10 @@ const MIN_SAVING_MS = 50;
 /**
  * One live Lighthouse run on Google's servers. Slow (seconds to a minute) and
  * variable between runs — two runs of the same page will differ by a few points.
+ *
+ * Returns null if the run was cancelled before this test came back.
  */
-export async function fetchPsi({ url, device, apiKey }) {
+export async function fetchPsi({ url, device, apiKey, signal = null }) {
   const params = new URLSearchParams({
     url,
     strategy: device === 'Desktop' ? 'desktop' : 'mobile',
@@ -36,7 +41,11 @@ export async function fetchPsi({ url, device, apiKey }) {
     key: apiKey,
   });
 
-  const res = await request(`${PSI_URL}?${params}`, { timeout: 120000, retries: 1 });
+  const res = await request(`${PSI_URL}?${params}`, { timeout: 120000, retries: 1, signal });
+
+  // Stopped before this one finished: there is no result, and inventing an
+  // ERROR row would blame the page for the user's own cancel.
+  if (res.error === CANCELLED) return null;
 
   const base = {
     url,
@@ -62,7 +71,7 @@ export async function fetchPsi({ url, device, apiKey }) {
       : apiErrorMessage(res, 'PSI returned no result');
     return {
       ...base, score: null, verdict: 'ERROR', status: String(msg).slice(0, 200),
-      values: {}, auditScores: {}, opportunities: '', savingsMs: null, lhVersion: '',
+      values: {}, auditScores: {}, opportunities: '', details: [], savingsMs: null, lhVersion: '',
     };
   }
 
@@ -98,6 +107,9 @@ export async function fetchPsi({ url, device, apiKey }) {
     values,
     auditScores,
     opportunities: found.slice(0, 3).map((o) => `${o.title} (${o.ms}ms)`).join(' · '),
+    // The table shows the top three; the details window shows all of them, so
+    // keep the list rather than only the joined summary.
+    details: found,
     savingsMs: found.reduce((sum, o) => sum + o.ms, 0),
     lhVersion: String(lh.lighthouseVersion || ''),
   };

@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,7 +16,9 @@ import {
 } from '../src/score.js';
 import { psiReportLink } from '../src/psi.js';
 import { writeWorkbook, __test__ as WB } from '../src/report/workbook.js';
+import { toCsv, csvCell, writeCsv } from '../src/report/csv.js';
 import { Limiter } from '../src/limiter.js';
+import { request, CANCELLED } from '../src/http.js';
 import { activeProxy, bypassesProxy, describeFetchError } from '../src/http.js';
 
 let pass = 0, fail = 0;
@@ -208,7 +210,7 @@ ok('flag before another flag stays boolean', parseArgs(['--quiet', '--max', '5']
 const baseArgs = { sitemap: 'https://e.com/s.xml', key: 'K' };
 const cfg = buildConfig(baseArgs);
 ok('defaults: both devices', eq(cfg.devices, ['Mobile', 'Desktop']), cfg.devices);
-ok('defaults: max 50', cfg.max === 50);
+ok('defaults: max all, not the first 50 pages of a site', cfg.max === 0, cfg.max);
 ok('defaults: 25 trend weeks', cfg.trendWeeks === 25);
 ok('defaults: crux off - PageSpeed is the report', cfg.cruxScope === 'none', cfg.cruxScope);
 ok('defaults: no trend without crux', cfg.trend === false);
@@ -266,7 +268,7 @@ console.log('\n== 8a. --max accepts a number or "all" ==');
 ok('--max all means no cap', buildConfig({ ...baseArgs, max: 'all' }).max === 0);
 ok('--max 0 also means no cap', buildConfig({ ...baseArgs, max: '0' }).max === 0);
 ok('--max 250 is kept as given', buildConfig({ ...baseArgs, max: '250' }).max === 250);
-ok('--max defaults to 50', buildConfig(baseArgs).max === 50);
+ok('--max defaults to all', buildConfig(baseArgs).max === 0, buildConfig(baseArgs).max);
 ok('--max with a non-number errors instead of falling back to the default',
   await throws(() => buildConfig({ ...baseArgs, max: 'lots' }), /--max must be a whole number/));
 ok('--max negative is refused', await throws(() => buildConfig({ ...baseArgs, max: '-5' }), /--max must be/));
@@ -359,14 +361,15 @@ const trendRows = [
 ];
 const psiRows = [
   { url: 'https://e.com/fail?a=1&b=2', device: 'Desktop', title: 'x', score: 42, verdict: 'POOR',
-    status: 'OK', values: { LCP: 4800, TBT: 611, CLS: 0.051, FCP: 1750, SI: 3400, TTFB: 640 },
-    auditScores: { LCP: 0.2, TBT: 0.15, CLS: 0.95, FCP: 0.92, SI: 0.55, TTFB: 0.98 },
+    status: 'OK', values: { LCP: 4800, TBT: 611, CLS: 0.051, FCP: 1750, SI: 3400, TTFB: 640, BYTES: 1464320 },
+    auditScores: { LCP: 0.2, TBT: 0.15, CLS: 0.95, FCP: 0.92, SI: 0.55, TTFB: 0.98, BYTES: 0.3 },
     opportunities: 'Reduce unused JavaScript (2340ms)', savingsMs: 3640, lhVersion: '12.0.0',
+    details: [{ title: 'Reduce unused JavaScript', ms: 2340 }, { title: 'Serve images in next-gen formats', ms: 1300 }],
     testedAt: now, cruxVerdict: 'FAIL', sourceGroup: 'smoke' },
   { url: 'https://e.com/pass', device: 'Mobile', title: 'Passing page', score: 95, verdict: 'GOOD',
-    status: 'OK', values: { LCP: 1200, TBT: 40, CLS: 0.01, FCP: 900, SI: 1500, TTFB: 300 },
-    auditScores: { LCP: 0.95, TBT: 0.99, CLS: 0.99, FCP: 0.97, SI: 0.9, TTFB: 0.99 },
-    opportunities: '', savingsMs: 0, lhVersion: '12.0.0',
+    status: 'OK', values: { LCP: 1200, TBT: 40, CLS: 0.01, FCP: 900, SI: 1500, TTFB: 300, BYTES: 409600 },
+    auditScores: { LCP: 0.95, TBT: 0.99, CLS: 0.99, FCP: 0.97, SI: 0.9, TTFB: 0.99, BYTES: 0.97 },
+    opportunities: '', savingsMs: 0, details: [], lhVersion: '12.0.0',
     testedAt: now, cruxVerdict: 'PASS', sourceGroup: 'smoke' },
 ];
 
@@ -470,15 +473,19 @@ ok('leading null weeks are grey',
 ok('latest 5200 is red', argb(tr.getCell(tNew, WB.FIRST_WEEK_COL + 2)) === WB.FILL.poor);
 
 const ps = back.getWorksheet('smoke');
-ok('PSI header', ps.getCell('E1').value === 'score' && ps.getCell('M1').value === 'status' &&
-  ps.getCell('N1').value === 'top opportunities', [ps.getCell('M1').value, ps.getCell('N1').value]);
+ok('PSI header', ps.getCell('E1').value === 'score' && ps.getCell('M1').value === 'size (KB)' &&
+  ps.getCell('N1').value === 'status' && ps.getCell('O1').value === 'top opportunities',
+  [ps.getCell('M1').value, ps.getCell('N1').value, ps.getCell('O1').value]);
 ok('POOR row: url cell red', argb(ps.getCell(2, 2)) === WB.FILL.poor);
 ok('POOR row: LCP cell red (audit 0.2)', argb(ps.getCell(2, 7)) === WB.FILL.poor);
 ok('POOR row: CLS cell green despite red row (audit 0.95)', argb(ps.getCell(2, 9)) === WB.FILL.good);
 ok('POOR row: Speed Index amber (audit 0.55)', argb(ps.getCell(2, 11)) === WB.FILL.mid);
-ok('opportunities text carried', String(ps.getCell(2, 14).value).includes('2340ms'));
-ok('psi status column carries the reason', ps.getCell(2, 13).value === 'OK', ps.getCell(2, 13).value);
-ok('crux verdict alongside for comparison', ps.getCell(2, 16).value === 'FAIL', ps.getCell(2, 16).value);
+ok('opportunities text carried', String(ps.getCell(2, 15).value).includes('2340ms'));
+ok('psi status column carries the reason', ps.getCell(2, 14).value === 'OK', ps.getCell(2, 14).value);
+ok('crux verdict alongside for comparison', ps.getCell(2, 17).value === 'FAIL', ps.getCell(2, 17).value);
+// Page weight is reported in KB, not the raw byte count Lighthouse returns.
+ok('size is stored as KB, not bytes', ps.getCell(2, 13).value === 1430, ps.getCell(2, 13).value);
+ok('size cell takes its colour from the audit, not the row', argb(ps.getCell(2, 13)) === WB.FILL.poor, argb(ps.getCell(2, 13)));
 
 const sum = back.getWorksheet('Summary');
 const summaryText = [];
@@ -549,8 +556,8 @@ ok('worst score sorts first on the combined sheet',
   allSheet.getCell(2, 2).value === 'https://e.com/blog/a' && allSheet.getCell(3, 2).value === 'https://e.com/shop/b',
   [allSheet.getCell(2, 2).value, allSheet.getCell(3, 2).value]);
 ok('source column on the combined sheet still says which sitemap each row came from',
-  allSheet.getCell(2, 17).value === 'blog-sitemap' && allSheet.getCell(3, 17).value === 'shop-sitemap',
-  [allSheet.getCell(2, 17).value, allSheet.getCell(3, 17).value]);
+  allSheet.getCell(2, 18).value === 'blog-sitemap' && allSheet.getCell(3, 18).value === 'shop-sitemap',
+  [allSheet.getCell(2, 18).value, allSheet.getCell(3, 18).value]);
 
 const blogSheet = multiWb.getWorksheet('blog-sitemap');
 ok('per-group sheet still only has its own rows', blogSheet.rowCount === 2, blogSheet.rowCount);
@@ -700,6 +707,95 @@ ok('an index array (what a GUI ticks) selects by position',
 ok('a selection naming nothing real is an error, not an empty run',
   await throws(() => selectChildren(kids, '9'), /did not select/));
 
+
+// ================================================================ 17. CSV
+
+console.log('\n== 17. CSV export ==');
+
+{
+  const text = toCsv(psiRows);
+  const lines = text.split('\r\n');
+
+  ok('a BOM leads the file, or Excel reads UTF-8 as the local codepage',
+    text.charCodeAt(0) === 0xfeff);
+  ok('the header names every column', lines[0].replace('\ufeff', '').startsWith('url,title,device,score,verdict'), lines[0]);
+  ok('one line per row plus the header', lines.filter((l) => l.trim()).length === 3, lines.length);
+  ok('worst score first, same order as the table and the workbook',
+    lines[1].includes('/fail?') && lines[2].includes('/pass'), [lines[1].slice(0, 40), lines[2].slice(0, 40)]);
+  ok('size is carried as the raw byte count a spreadsheet can do maths on',
+    lines[1].includes('1464320'), lines[1]);
+  ok('every opportunity is listed, not only the three the table shows',
+    lines[1].includes('Reduce unused JavaScript (2340ms) | Serve images in next-gen formats (1300ms)'), lines[1]);
+}
+
+{
+  // Excel runs a CSV cell that opens with = + - @ as a formula. ExcelJS never
+  // does this for .xlsx, so this guard exists only on the CSV side.
+  ok('a title that opens with = cannot become a formula',
+    csvCell('=cmd|calc') === "'=cmd|calc", csvCell('=cmd|calc'));
+  for (const lead of ['+', '-', '@', '\t', '\r']) {
+    // A carriage return also forces the field to be quoted, so the guard
+    // sits just inside the quote rather than at the very start.
+    const cell = csvCell(lead + 'danger').replace(/^"/, '');
+    ok(`a cell opening with ${JSON.stringify(lead)} is neutralised`,
+      cell.startsWith("'"), csvCell(lead + 'danger'));
+  }
+  ok('an ordinary title is left alone', csvCell('Hello') === 'Hello');
+  ok('a comma forces quoting', csvCell('a,b') === '"a,b"', csvCell('a,b'));
+  ok('an inner quote is doubled', csvCell('say "hi"') === '"say ""hi"""', csvCell('say "hi"'));
+  ok('a newline inside a cell is quoted, not left to split the row',
+    csvCell('one\ntwo') === '"one\ntwo"', csvCell('one\ntwo'));
+  ok('an empty value is an empty field, not the text "null"',
+    csvCell(null) === '' && csvCell(undefined) === '', [csvCell(null), csvCell(undefined)]);
+  ok('zero survives, rather than being treated as empty', csvCell(0) === '0', csvCell(0));
+}
+
+{
+  const csvPath = join(tmp, 'out.csv');
+  await writeCsv(csvPath, psiRows);
+  const written = readFileSync(csvPath, 'utf8');
+  ok('writeCsv puts the same text on disk', written === toCsv(psiRows));
+}
+
+// =========================================================== 16. stopping a run
+
+console.log('\n== 16. stopping a run ==');
+
+{
+  // Work already running is left to finish; work not yet started never runs.
+  // That is the whole contract: pressing stop keeps what you already waited for.
+  const ac = new AbortController();
+  const limiter = new Limiter({ concurrency: 2, signal: ac.signal });
+  const started = [];
+
+  const out = await limiter.map([1, 2, 3, 4, 5, 6], async (n) => {
+    started.push(n);
+    if (n === 2) ac.abort();            // stop once the first pair is running
+    await new Promise((r) => setTimeout(r, 5));
+    return n * 10;
+  });
+
+  ok('work already in flight still returns its result',
+    out.length === started.length && out.every((v) => v % 10 === 0), { out, started });
+  ok('queued work is skipped, not run', started.length < 6, started);
+  ok('skipped jobs leave no hole in the results',
+    !out.includes(undefined) && !out.includes(null), out);
+}
+
+{
+  // Without a signal nothing changes — the ordinary path must not pay for this.
+  const out = await new Limiter({ concurrency: 2 }).map([1, 2, 3], async (n) => n * 2);
+  ok('an un-cancelled map still returns every result in order', eq(out, [2, 4, 6]), out);
+}
+
+{
+  // A cancelled request is reported as cancelled, not as a timeout or a network
+  // fault, so nothing downstream blames the site.
+  const ac = new AbortController();
+  ac.abort();
+  const res = await request('https://example.com/', { signal: ac.signal, retries: 0 });
+  ok('a request cancelled before it starts says so', res.error === CANCELLED, res);
+}
 
 // ================================================================ 15. the GUI
 

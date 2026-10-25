@@ -22,12 +22,13 @@ export function originOf(url) {
  * individual pages of a small site have no page-level data at all, which is
  * what the origin fallback in index.js is for.
  */
-export async function fetchCurrent({ url, origin, device, apiKey }) {
+export async function fetchCurrent({ url, origin, device, apiKey, signal = null }) {
   const target = origin ? { origin } : { url };
   const res = await request(`${QUERY_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     json: { ...target, formFactor: formFactorOf(device), metrics: ALL_METRICS },
     timeout: 30000,
+    signal,
   });
 
   const base = {
@@ -68,7 +69,7 @@ export async function fetchCurrent({ url, origin, device, apiKey }) {
  * neighbouring points share three weeks of data. The line is therefore smooth
  * and lagging by design: a change takes about four weeks to fully appear.
  */
-export async function fetchHistory({ url, origin, device, apiKey, weeks = 25 }) {
+export async function fetchHistory({ url, origin, device, apiKey, weeks = 25, signal = null }) {
   const target = origin ? { origin } : { url };
   const res = await request(`${HISTORY_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
@@ -79,6 +80,7 @@ export async function fetchHistory({ url, origin, device, apiKey, weeks = 25 }) 
       collectionPeriodCount: weeks,
     },
     timeout: 30000,
+    signal,
   });
 
   const level = origin ? 'origin' : 'page';

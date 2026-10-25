@@ -164,6 +164,7 @@ const PSI_COLUMNS = [
   { header: 'FCP (ms)', width: 11 },
   { header: 'Speed Index (ms)', width: 16 },
   { header: 'TTFB (ms)', width: 11 },
+  { header: 'size (KB)', width: 11 },
   { header: 'status', width: 46 },
   { header: 'top opportunities', width: 70 },
   { header: 'total savings (ms)', width: 17 },
@@ -173,7 +174,7 @@ const PSI_COLUMNS = [
   { header: 'tested at', width: 19 },
 ];
 
-const PSI_METRIC_COL = { 7: 'LCP', 8: 'TBT', 9: 'CLS', 10: 'FCP', 11: 'SI', 12: 'TTFB' };
+const PSI_METRIC_COL = { 7: 'LCP', 8: 'TBT', 9: 'CLS', 10: 'FCP', 11: 'SI', 12: 'TTFB', 13: 'BYTES' };
 
 function addPsiSheet(wb, psiRows, sheetName = 'PSI') {
   if (!psiRows.length) return null;
@@ -194,6 +195,8 @@ function addPsiSheet(wb, psiRows, sheetName = 'PSI') {
     const row = sheet.addRow([
       'live test', r.url, r.title || '', r.device, r.score, r.verdict,
       v.LCP ?? null, v.TBT ?? null, v.CLS ?? null, v.FCP ?? null, v.SI ?? null, v.TTFB ?? null,
+      // Bytes are unreadable in a spreadsheet column; KB is what the number means.
+      v.BYTES === null || v.BYTES === undefined ? null : Math.round(v.BYTES / 1024),
       r.status || '', r.opportunities || '', r.savingsMs, r.cruxVerdict || '', r.sourceGroup || '',
       r.lhVersion || '', r.testedAt,
     ]);

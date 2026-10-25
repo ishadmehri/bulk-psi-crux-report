@@ -1,3 +1,6 @@
+/** Marks a job the user cancelled before it started. */
+const SKIPPED = Symbol('skipped');
+
 /**
  * Concurrency cap + optional requests-per-minute ceiling.
  *
@@ -7,24 +10,30 @@
  * you fire 150 at 00:59 and another 150 at 01:00.
  */
 export class Limiter {
-  constructor({ concurrency = 5, perMinute = 0 } = {}) {
+  constructor({ concurrency = 5, perMinute = 0, signal = null } = {}) {
     this.concurrency = Math.max(1, concurrency);
     this.perMinute = perMinute;
     this.active = 0;
     this.queue = [];
     this.timestamps = [];
+    this.signal = signal;
   }
+
+  get aborted() { return !!(this.signal && this.signal.aborted); }
 
   async #slot() {
     if (!this.perMinute) return;
     for (;;) {
+      if (this.aborted) return;
       const now = Date.now();
       this.timestamps = this.timestamps.filter((t) => now - t < 60000);
       if (this.timestamps.length < this.perMinute) {
         this.timestamps.push(now);
         return;
       }
-      const waitMs = 60000 - (now - this.timestamps[0]) + 25;
+      // Waking every second keeps a cancel from being stuck behind a minute
+      // of rate-limit sleep.
+      const waitMs = Math.min(1000, 60000 - (now - this.timestamps[0]) + 25);
       await new Promise((r) => setTimeout(r, waitMs));
     }
   }
@@ -43,7 +52,9 @@ export class Limiter {
       (async () => {
         try {
           await this.#slot();
-          job.resolve(await job.fn());
+          // Work not yet started when the user stops is simply not done. It is
+          // skipped rather than failed, so nothing invents an error row.
+          job.resolve(this.aborted ? SKIPPED : await job.fn());
         } catch (e) {
           job.reject(e);
         } finally {
@@ -62,7 +73,7 @@ export class Limiter {
    */
   async map(items, fn, onProgress) {
     let done = 0;
-    return Promise.all(items.map((item, i) =>
+    const all = await Promise.all(items.map((item, i) =>
       this.run(async () => {
         const out = await fn(item, i);
         done++;
@@ -70,5 +81,7 @@ export class Limiter {
         return out;
       })
     ));
+    // Stopping keeps whatever finished; the rest never ran.
+    return all.filter((r) => r !== SKIPPED);
   }
 }

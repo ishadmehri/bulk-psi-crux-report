@@ -85,8 +85,9 @@ export async function readSitemap(url) {
  * List the children of a sitemap index, with URL counts so the picker can show
  * how big each one is. Counts are unfiltered totals; the filter applies later.
  */
-export async function listIndexChildren(indexUrl, { concurrency = 5, onProgress } = {}) {
-  const { xml, isIndex } = await readSitemap(indexUrl);
+export async function listIndexChildren(indexUrl, { concurrency = 5, onProgress, xml: known = null } = {}) {
+  // The caller may already have fetched it while working out which kind it is.
+  const { xml, isIndex } = known ? { xml: known, isIndex: isIndexDocument(known) } : await readSitemap(indexUrl);
   if (!isIndex) {
     throw new Error(`${indexUrl} is not a sitemap index. Try --sitemap instead.`);
   }
@@ -125,8 +126,8 @@ export function uniqueNames(groups) {
 }
 
 /** A flat sitemap becomes one group. */
-export async function groupFromSitemap(url, { max = 50, filter = null } = {}) {
-  const { xml, isIndex } = await readSitemap(url);
+export async function groupFromSitemap(url, { max = 50, filter = null, xml: known = null } = {}) {
+  const { xml, isIndex } = known ? { xml: known, isIndex: isIndexDocument(known) } : await readSitemap(url);
   if (isIndex) {
     throw new Error(`${url} is a sitemap index. Use --sitemap-index instead.`);
   }

@@ -210,9 +210,11 @@ export function buildConfig(args) {
     );
   }
 
-  // 0 means "no cap". A default of 50 keeps an accidental run over a 600-URL
-  // sitemap index cheap, but there has to be a way to say "all of them".
-  const maxRaw = String(args.max ?? '50').trim().toLowerCase();
+  // 0 means "no cap", and that is the default: a report of the first 50 pages
+  // of a site answers a question nobody asked. What keeps an accidental run
+  // over a 600-URL index from being a surprise is the estimate shown before it
+  // starts, not a silent cap.
+  const maxRaw = String(args.max ?? 'all').trim().toLowerCase();
   const maxUrls = maxRaw === 'all' ? 0 : Number(maxRaw);
   if (!Number.isInteger(maxUrls) || maxUrls < 0) {
     throw new Error(`--max must be a whole number or "all", not "${args.max}".`);
@@ -268,7 +270,7 @@ Input source (pick one):
 
 Options:
   --pick <sel>           skip the prompt for a sitemap index: 1,3 or 2-4 or all
-  --max <n|all>          cap URLs per group (default 50; "all" for no cap)
+  --max <n|all>          cap URLs per group (default all)
   --filter <s>           keep only URLs containing this; /regex/ also accepted
   --devices <list>       mobile, desktop, or both (default both)
   --psi <scope>          none | failed | all       (default all)

@@ -30,6 +30,13 @@ export const THRESHOLDS = {
 };
 
 /** CrUX API metric names, in the order we ask for them. */
+/**
+ * Page weight in bytes. Not an official Core Web Vital, so it never enters the
+ * score — these only decide what colour the cell is. 1.6 MB is roughly where
+ * Lighthouse itself starts complaining.
+ */
+export const BYTE_THRESHOLDS = { good: 1_000_000, poor: 2_500_000 };
+
 export const CRUX_METRICS = {
   LCP:  'largest_contentful_paint',
   INP:  'interaction_to_next_paint',

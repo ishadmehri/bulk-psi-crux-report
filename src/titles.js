@@ -22,15 +22,16 @@ function decode(s) {
  * A failure here is not worth stopping a run for: the title is a convenience
  * column, so anything that does not come back cleanly is left blank.
  */
-export async function fetchTitles(urls, { concurrency = 5, onProgress } = {}) {
+export async function fetchTitles(urls, { concurrency = 5, onProgress, signal = null } = {}) {
   const unique = [...new Set(urls)];
-  const limiter = new Limiter({ concurrency });
+  const limiter = new Limiter({ concurrency, signal });
   const map = new Map();
 
   await limiter.map(unique, async (url) => {
     const res = await request(url, {
       parse: 'text',
       timeout: 15000,
+      signal,
       retries: 1,
       headers: { Accept: 'text/html,application/xhtml+xml' },
     });

@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { makeFilter, groupFromSitemap, listIndexChildren, groupsFromChildren } from './sources/sitemap.js';
+import { makeFilter, groupFromSitemap, listIndexChildren, groupsFromChildren, readSitemap } from './sources/sitemap.js';
 import { groupFromTextFile, groupFromUrls } from './sources/textfile.js';
 import { fetchCurrent, fetchHistory, originOf } from './crux.js';
 import { fetchPsi } from './psi.js';
@@ -51,15 +51,20 @@ export async function resolveGroups(cfg, emit = () => {}, onNeedPick = null) {
     emit({ type: 'reading', what: cfg.target });
     return groupFromTextFile(cfg.target, { max: cfg.max, filter });
   }
-  if (cfg.source === 'sitemap') {
-    emit({ type: 'reading', what: cfg.target });
-    return groupFromSitemap(cfg.target, { max: cfg.max, filter });
+  // A sitemap and a sitemap index are the same input as far as the person is
+  // concerned: one URL they copied from robots.txt. Which one it is, is a fact
+  // about the document, so read it and find out rather than asking.
+  emit({ type: 'reading', what: cfg.target });
+  const { xml, isIndex } = await readSitemap(cfg.target);
+
+  if (!isIndex) {
+    return groupFromSitemap(cfg.target, { max: cfg.max, filter, xml });
   }
 
-  emit({ type: 'reading', what: cfg.target });
   const children = await listIndexChildren(cfg.target, {
     concurrency: 5,
     onProgress: (done, total) => emit({ type: 'phase', phase: 'sitemaps', done, total }),
+    xml,
   });
   // A pick given up front runs straight through; otherwise ask the caller, and
   // if it has no way to ask, hand the children back so it can ask separately.
@@ -129,8 +134,12 @@ export function estimate(cfg, groups) {
  * Every phase pushes `{type:'phase', phase, done, total}`, and each finished
  * PageSpeed test also pushes `{type:'row', row}` so a UI can fill a table live
  * instead of waiting out the whole run for a file.
+ *
+ * `signal` stops it. Stopping keeps every result already in hand: the person
+ * who pressed stop wants the twenty minutes they already waited for, not an
+ * empty report.
  */
-export async function runReport(cfg, groups, emit = () => {}) {
+export async function runReport(cfg, groups, emit = () => {}, signal = null) {
   const tasks = [];
   for (const g of groups) {
     for (const url of g.urls) {
@@ -138,7 +147,7 @@ export async function runReport(cfg, groups, emit = () => {}) {
     }
   }
 
-  const cruxLimiter = new Limiter({ concurrency: cfg.concurrency, perMinute: CRUX_PER_MINUTE });
+  const cruxLimiter = new Limiter({ concurrency: cfg.concurrency, perMinute: CRUX_PER_MINUTE, signal });
   const phase = (name) => (done, total) => emit({ type: 'phase', phase: name, done, total });
 
   // The domains in play — one origin call per domain and device is nearly free
@@ -151,7 +160,7 @@ export async function runReport(cfg, groups, emit = () => {}) {
   if (cfg.cruxScope === 'pages') {
     cruxRows = await cruxLimiter.map(
       tasks,
-      async (t) => ({ ...(await fetchCurrent({ url: t.url, device: t.device, apiKey: cfg.apiKey })), sourceGroup: t.group }),
+      async (t) => ({ ...(await fetchCurrent({ url: t.url, device: t.device, apiKey: cfg.apiKey, signal })), sourceGroup: t.group }),
       phase('crux')
     );
   }
@@ -166,10 +175,12 @@ export async function runReport(cfg, groups, emit = () => {}) {
     if (wanted.length) {
       const fetched = await cruxLimiter.map(
         wanted,
-        (w) => fetchCurrent({ origin: w.origin, device: w.device, apiKey: cfg.apiKey }),
+        // The origin travels with the result: a cancelled run drops jobs, so
+        // lining results up against the input list by index would mislabel them.
+        async (w) => ({ ...(await fetchCurrent({ origin: w.origin, device: w.device, apiKey: cfg.apiKey, signal })), origin: w.origin }),
         phase('domain')
       );
-      fetched.forEach((row, i) => originRows.push({ ...row, origin: wanted[i].origin }));
+      originRows.push(...fetched);
 
       if (cfg.cruxScope === 'pages' && cfg.originFallback) {
         const byKey = new Map(originRows.map((r) => [`${r.origin}|${r.device}`, r]));
@@ -189,6 +200,7 @@ export async function runReport(cfg, groups, emit = () => {}) {
   const titles = await fetchTitles(tasks.map((t) => t.url), {
     concurrency: 5,
     onProgress: phase('titles'),
+    signal,
   });
   for (const row of cruxRows) row.title = titles.get(row.url) || '';
 
@@ -225,7 +237,7 @@ export async function runReport(cfg, groups, emit = () => {}) {
       (t) => fetchHistory({
         url: t.level === 'page' ? t.url : undefined,
         origin: t.level === 'origin' ? t.origin : undefined,
-        device: t.device, apiKey: cfg.apiKey, weeks: cfg.trendWeeks,
+        device: t.device, apiKey: cfg.apiKey, weeks: cfg.trendWeeks, signal,
       }),
       phase('trend')
     );
@@ -254,11 +266,13 @@ export async function runReport(cfg, groups, emit = () => {}) {
       : cruxRows.filter((r) => r.cwv === 'FAIL');
 
     if (candidates.length) {
-      const psiLimiter = new Limiter({ concurrency: cfg.psiConcurrency, perMinute: 200 });
+      const psiLimiter = new Limiter({ concurrency: cfg.psiConcurrency, perMinute: 200, signal });
       await psiLimiter.map(
         candidates,
-        (r) => fetchPsi({ url: r.url, device: r.device, apiKey: cfg.psiKey }),
+        (r) => fetchPsi({ url: r.url, device: r.device, apiKey: cfg.psiKey, signal }),
         (done, total, result, item) => {
+          // null means the user stopped before this test returned.
+          if (!result) return;
           const row = {
             ...result,
             title: item.title,
@@ -273,7 +287,7 @@ export async function runReport(cfg, groups, emit = () => {}) {
     }
   }
 
-  return { groups, cruxRows, trendRows, psiRows, originRows, titles };
+  return { groups, cruxRows, trendRows, psiRows, originRows, titles, stopped: !!(signal && signal.aborted) };
 }
 
 /** Write the workbook for a finished run. */
