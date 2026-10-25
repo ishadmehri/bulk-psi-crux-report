@@ -10,3 +10,6 @@ urls.txt
 
 # Drafts that are not part of the tool.
 article-elinweb.md
+
+# Build output: the installer and the unpacked app.
+dist/

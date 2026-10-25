@@ -1,17 +1,20 @@
 {
-  "name": "bulk-psi-crux-report",
+  "name": "elin-pagespeed-insight",
   "version": "1.0.0",
   "description": "Bulk PageSpeed Insights + CrUX reports for a whole sitemap, into one Excel workbook",
   "type": "module",
-  "main": "index.js",
+  "main": "electron/main.js",
   "bin": {
     "bulk-psi-crux-report": "index.js"
   },
   "scripts": {
+    "app": "electron .",
     "start": "node gui/server.js",
     "cli": "node index.js",
-    "gui": "node gui/server.js",
-    "test": "node test/run.js"
+    "test": "node test/run.js",
+    "electron-binary": "node node_modules/electron/install.js",
+    "dist": "electron-builder --win",
+    "dist:all": "electron-builder --win --mac --linux"
   },
   "keywords": [
     "core-web-vitals",
@@ -41,5 +44,64 @@
     "exceljs": "^4.4.0"
   },
   "license": "MIT",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "allowScripts": {
+    "electron-winstaller@5.4.0": true
+  },
+  "productName": "Elin PageSpeed Insight",
+  "build": {
+    "appId": "ir.elinweb.pagespeed",
+    "productName": "Elin PageSpeed Insight",
+    "copyright": "Copyright © 2026 Iman Shadmehri",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "gui/**/*",
+      "src/**/*",
+      "build/icon.png",
+      "package.json",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Elin PageSpeed Insight",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Development"
+    }
+  }
 }
