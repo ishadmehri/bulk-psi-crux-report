@@ -1,295 +1,368 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>گزارش سرعت صفحات</title>
+<title>Elin PageSpeed Insight</title>
 <style>
   :root {
-    --bg: #f4f5f7; --card: #fff; --ink: #1c2430; --muted: #65718040;
-    --dim: #657180; --line: #dfe3e8; --accent: #2a3340; --link: #1155cc;
+    --bg: #f4f5f7; --card: #fff; --ink: #1c2430; --dim: #657180; --line: #dfe3e8;
+    --accent: #2a3340; --brand: #ff6800; --brand2: #ffac00; --link: #1155cc;
     --good: #d9ead3; --mid: #fff2cc; --poor: #f4cccc; --none: #eee;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.7 Vazirmatn, "Segoe UI", Tahoma, sans-serif;
+    font: 14.5px/1.6 "Segoe UI", system-ui, sans-serif;
   }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 60px; }
+  .wrap { max-width: 1340px; margin: 0 auto; padding: 16px 16px 50px; }
 
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-  header h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  header { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+  header img { width: 28px; height: 28px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
   header .sp { flex: 1; }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
-  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; }
-  .card h2 .n {
-    display: inline-grid; place-items: center; width: 22px; height: 22px; margin-inline-end: 8px;
-    background: var(--accent); color: #fff; border-radius: 50%; font-size: 12px; vertical-align: -4px;
+  nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  nav button {
+    background: none; border: none; border-bottom: 2px solid transparent; color: var(--dim);
+    padding: 9px 16px; font: inherit; cursor: pointer; border-radius: 0;
   }
+  nav button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--brand); font-weight: 600; }
 
-  label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 5px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; }
+  .card > .body { padding: 16px 18px; }
+
+  /* The input panel folds away once a scan is running — the table is what
+     matters then, and a browser window is not tall. */
+  details.fold > summary {
+    padding: 13px 18px; cursor: pointer; font-weight: 600; list-style: none;
+    display: flex; align-items: center; gap: 9px;
+  }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: '▾'; color: var(--dim); transition: transform .15s; }
+  details.fold:not([open]) > summary::before { transform: rotate(-90deg); }
+  details.fold > summary .sub { font-weight: 400; color: var(--dim); font-size: 13px; margin-left: auto; }
+  details.fold > .body { padding: 2px 18px 18px; border-top: 1px solid var(--line); }
+
+  label { display: block; font-size: 12.5px; color: var(--dim); margin-bottom: 5px; }
   input[type=text], input[type=number], input[type=password], textarea, select {
-    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px;
+    width: 100%; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px;
     font: inherit; background: #fff; color: inherit;
   }
-  textarea { min-height: 96px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
-  input:focus, textarea:focus, select:focus { outline: 2px solid #b9c6d8; border-color: #b9c6d8; }
+  textarea { min-height: 104px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid #ffd09e; border-color: var(--brand2); }
 
   button {
-    font: inherit; padding: 9px 18px; border-radius: 7px; border: 1px solid var(--accent);
+    font: inherit; padding: 8px 17px; border-radius: 7px; border: 1px solid var(--accent);
     background: var(--accent); color: #fff; cursor: pointer;
   }
+  button.primary { background: var(--brand); border-color: var(--brand); }
+  button.stop { background: #b3261e; border-color: #b3261e; }
   button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
   button:disabled { opacity: .45; cursor: default; }
   button.sm { padding: 5px 11px; font-size: 13px; }
 
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-  .row > * { flex: 1; min-width: 130px; }
-  .row > .narrow { flex: 0 0 110px; min-width: 110px; }
-  .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 132px; }
+  .row > .narrow { flex: 0 0 116px; min-width: 116px; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 15px; flex-wrap: wrap; }
 
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-  .tabs button {
-    background: #fff; color: var(--dim); border-color: var(--line); padding: 7px 14px; font-size: 14px;
-  }
+  .tabs button { background: #fff; color: var(--dim); border-color: var(--line); padding: 7px 15px; font-size: 13.5px; }
   .tabs button[aria-selected=true] { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  .hint { font-size: 13px; color: var(--dim); margin-top: 6px; }
-  .note { background: #fff8e1; border: 1px solid #f0d890; border-radius: 7px; padding: 10px 13px; font-size: 13.5px; margin-top: 12px; }
-  .bad  { background: #fdeaea; border-color: #e9b0b0; }
-  .okbox { background: #eef7ea; border-color: #b9d8a8; }
+  .hint { font-size: 12.5px; color: var(--dim); margin-top: 6px; }
+  .note { border-radius: 7px; padding: 10px 13px; font-size: 13.5px; margin-top: 12px; border: 1px solid; }
+  .note.info { background: #eef4fd; border-color: #b8cdea; }
+  .note.warn { background: #fff8e1; border-color: #f0d890; }
+  .note.bad  { background: #fdeaea; border-color: #e9b0b0; }
+  .note.okbox { background: #eef7ea; border-color: #b9d8a8; }
 
-  .bar { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }
-  .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+  .bar { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 11px 0 5px; }
+  .bar i { display: block; height: 100%; background: var(--brand); width: 0; transition: width .25s; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .scroll { overflow: auto; max-height: 68vh; border: 1px solid var(--line); border-radius: 8px; }
-  th, td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid #eceef1; }
+  .scroll { overflow: auto; max-height: 64vh; border: 1px solid var(--line); border-radius: 8px; }
+  th, td { padding: 6px 9px; text-align: left; white-space: nowrap; border-bottom: 1px solid #eceef1; }
   th {
     position: sticky; top: 0; z-index: 2; background: var(--accent); color: #fff;
     font-weight: 600; cursor: pointer; user-select: none;
   }
   th:hover { background: #3b4656; }
-  td.u { max-width: 330px; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: left; }
-  td.t { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
-  td.o { max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-  td.n { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
+  th .ar { opacity: .55; font-size: 10px; }
+  td.u { max-width: 310px; overflow: hidden; text-overflow: ellipsis; }
+  td.t { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
   tr.good td { background: var(--good); } tr.mid td { background: var(--mid); }
   tr.poor td { background: var(--poor); } tr.none td { background: var(--none); }
   td.c-good { background: var(--good) !important; } td.c-mid { background: var(--mid) !important; }
   td.c-poor { background: var(--poor) !important; } td.c-none { background: var(--none) !important; }
   a { color: var(--link); }
+  button.det { padding: 2px 9px; font-size: 12px; background: #fff; color: var(--ink); border-color: #c3cbd5; }
 
-  .chips { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; margin: 2px 0 0; }
-  .chip b { font-weight: 700; }
-  .kids { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; }
-  .kids label { display: flex; gap: 9px; align-items: center; padding: 5px 0; color: var(--ink); font-size: 14px; margin: 0; }
-  .kids label span { color: var(--dim); font-size: 12.5px; }
+  .chips { display: flex; gap: 9px; flex-wrap: wrap; font-size: 13px; align-items: center; }
+  .chip { padding: 3px 11px; border-radius: 5px; }
+  .kids { max-height: 230px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 3px 11px; }
+  .kids label { display: flex; gap: 9px; align-items: center; padding: 5px 0; color: var(--ink); font-size: 13.5px; margin: 0; }
+  .kids label .c { color: var(--dim); font-size: 12.5px; margin-left: auto; }
   .kids input { width: auto; }
   .hide { display: none !important; }
-  dialog { border: 1px solid var(--line); border-radius: 12px; padding: 20px; max-width: 540px; width: 92%; }
-  dialog::backdrop { background: #1c243088; }
-  ol { padding-inline-start: 22px; } ol li { margin-bottom: 7px; font-size: 14px; }
-  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; direction: ltr; display: inline-block; }
+
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; padding: 0;
+    max-width: 720px; width: 94%; max-height: 86vh; color: var(--ink);
+  }
+  dialog::backdrop { background: #1c243099; }
+  dialog .head { padding: 15px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  dialog .head h2 { margin: 0; font-size: 15.5px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog .body { padding: 18px 20px; overflow: auto; max-height: 62vh; }
+  dialog .foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 10px; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13.5px; margin: 0 0 16px; }
+  .kv dt { color: var(--dim); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .opp { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .opp div { display: flex; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #eceef1; font-size: 13.5px; }
+  .opp div:last-child { border-bottom: none; }
+  .opp div b { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  pre.err { background: #fdeaea; border: 1px solid #e9b0b0; border-radius: 7px; padding: 11px; white-space: pre-wrap; font-size: 12.5px; margin: 0; }
+
+  ol { padding-left: 22px; } ol li { margin-bottom: 7px; font-size: 13.5px; }
+  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  .rep { display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .rep:last-child { border-bottom: none; }
+  .rep .nm { font-weight: 600; }
+  .rep .meta { color: var(--dim); font-size: 12.5px; }
+  .rep .sp { flex: 1; }
+  .empty { padding: 34px; text-align: center; color: var(--dim); font-size: 13.5px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <h1>گزارش سرعت صفحات</h1>
+  <img src="/icon.png" alt="">
+  <h1>Elin PageSpeed Insight</h1>
   <div class="sp"></div>
-  <button class="ghost sm" id="btn-settings">تنظیمات</button>
+  <span class="hint" id="key-badge"></span>
 </header>
 
-<!-- ───────────────────────────── step 1: input ───────────────────────────── -->
-<section class="card" id="card-input">
-  <h2><span class="n">۱</span>ورودی</h2>
+<nav>
+  <button data-view="scan" aria-selected="true">Scan</button>
+  <button data-view="reports" aria-selected="false">Reports</button>
+  <button data-view="settings" aria-selected="false">Settings</button>
+</nav>
 
-  <div class="tabs" id="tabs">
-    <button data-mode="url" aria-selected="true">یک آدرس</button>
-    <button data-mode="list" aria-selected="false">لیست آدرس</button>
-    <button data-mode="file" aria-selected="false">فایل txt / csv</button>
-    <button data-mode="sitemap" aria-selected="false">sitemap</button>
-    <button data-mode="sitemap-index" aria-selected="false">sitemap index</button>
-  </div>
+<!-- ═══════════════════════════════════════════════════════════════ scan ═══ -->
+<div id="view-scan">
 
-  <div id="in-url">
-    <label for="f-url">آدرس صفحه</label>
-    <input type="text" id="f-url" dir="ltr" placeholder="https://example.com/page" spellcheck="false">
-  </div>
+  <details class="fold card" id="input-fold" open>
+    <summary>Input<span class="sub" id="input-sub"></span></summary>
+    <div class="body">
 
-  <div id="in-list" class="hide">
-    <label for="f-list">هر خط یک آدرس (یا با کاما جدا کن). خط خالی و خطی که با # شروع شود نادیده گرفته می‌شود.</label>
-    <textarea id="f-list" dir="ltr" spellcheck="false" placeholder="https://example.com/&#10;example.com/blog/&#10;# این خط نادیده گرفته می‌شود"></textarea>
-  </div>
+      <div class="tabs" id="tabs">
+        <button data-mode="list" aria-selected="true">URL list</button>
+        <button data-mode="file" aria-selected="false">File (txt / csv)</button>
+        <button data-mode="sitemap" aria-selected="false">Sitemap</button>
+      </div>
 
-  <div id="in-file" class="hide">
-    <label for="f-file">فایل متنی یا CSV</label>
-    <input type="file" id="f-file" accept=".txt,.csv,.tsv,text/plain,text/csv">
-    <div class="hint">در فایل CSV لازم نیست آدرس در ستون اول باشد — خودش ستونی را که آدرس است پیدا می‌کند و سرصفحه را رد می‌کند.</div>
-  </div>
+      <div id="in-list">
+        <label for="f-list">One URL per line, or separated by commas. Blank lines and lines starting with # are ignored.</label>
+        <textarea id="f-list" spellcheck="false" placeholder="https://example.com/&#10;example.com/blog/&#10;# this line is ignored"></textarea>
+      </div>
 
-  <div id="in-sitemap" class="hide">
-    <label for="f-sitemap">آدرس sitemap</label>
-    <input type="text" id="f-sitemap" dir="ltr" placeholder="https://example.com/post-sitemap.xml" spellcheck="false">
-  </div>
+      <div id="in-file" class="hide">
+        <label for="f-file">Text or CSV file</label>
+        <input type="file" id="f-file" accept=".txt,.csv,.tsv,text/plain,text/csv">
+        <div class="hint">In a CSV the URL does not have to be the first column — the column holding it is found, and the header row is skipped.</div>
+      </div>
 
-  <div id="in-sitemap-index" class="hide">
-    <label for="f-index">آدرس sitemap index</label>
-    <input type="text" id="f-index" dir="ltr" placeholder="https://example.com/sitemap_index.xml" spellcheck="false">
-    <div class="hint">فرزندانش لیست می‌شوند تا انتخاب کنی کدام‌ها تست شوند.</div>
-  </div>
+      <div id="in-sitemap" class="hide">
+        <label for="f-sitemap">Sitemap URL</label>
+        <input type="text" id="f-sitemap" placeholder="https://example.com/sitemap.xml" spellcheck="false">
+        <div class="hint">A sitemap index works here too — if the URL turns out to be one, its children are listed so you can choose.</div>
+      </div>
 
-  <div class="row" style="margin-top:16px">
-    <div class="narrow">
-      <label for="f-max">سقف آدرس</label>
-      <input type="text" id="f-max" value="50" dir="ltr">
+      <div class="row" style="margin-top:15px">
+        <div class="narrow">
+          <label for="f-max">Max URLs</label>
+          <input type="text" id="f-max" value="all">
+        </div>
+        <div>
+          <label for="f-devices">Device</label>
+          <select id="f-devices">
+            <option value="mobile">Mobile only</option>
+            <option value="mobile,desktop">Mobile and desktop</option>
+            <option value="desktop">Desktop only</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-filter">URL filter (optional)</label>
+          <input type="text" id="f-filter" placeholder="/blog/  or  /regex/" spellcheck="false">
+        </div>
+        <div>
+          <label for="f-crux">Real-user data (CrUX)</label>
+          <select id="f-crux">
+            <option value="none">No, PageSpeed only</option>
+            <option value="origin">Yes, domain level and trend</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-check">Check input</button>
+        <span id="check-state" class="hint"></span>
+      </div>
+
+      <div id="kids-box" class="hide" style="margin-top:15px">
+        <label>This is a sitemap index. Which of its sitemaps?</label>
+        <div class="kids" id="kids"></div>
+        <div class="actions">
+          <button class="ghost sm" id="kids-all">All</button>
+          <button class="ghost sm" id="kids-none">None</button>
+          <button id="kids-ok">Use selected</button>
+        </div>
+      </div>
+
+      <div id="plan" class="hide">
+        <div class="note okbox" id="plan-text"></div>
+        <div class="note bad hide" id="plan-capped"></div>
+        <div class="note warn hide" id="plan-crowd"></div>
+      </div>
     </div>
-    <div>
-      <label for="f-devices">دستگاه</label>
-      <select id="f-devices">
-        <option value="mobile">فقط موبایل</option>
-        <option value="mobile,desktop">موبایل و دسکتاپ</option>
-        <option value="desktop">فقط دسکتاپ</option>
-      </select>
+  </details>
+
+  <div class="card"><div class="body">
+    <div class="actions" style="margin-top:0">
+      <button class="primary" id="btn-run" disabled>Start scan</button>
+      <button class="ghost" id="btn-excel" disabled>Save as Excel</button>
+      <button class="ghost" id="btn-csv" disabled>Save as CSV</button>
+      <div class="sp" style="flex:1"></div>
+      <div class="chips" id="counts"></div>
     </div>
-    <div>
-      <label for="f-filter">فیلتر آدرس (اختیاری)</label>
-      <input type="text" id="f-filter" dir="ltr" placeholder="/blog/  یا  /regex/" spellcheck="false">
-    </div>
-    <div>
-      <label for="f-crux">داده‌ی کاربر واقعی (CrUX)</label>
-      <select id="f-crux">
-        <option value="none">نه، فقط PageSpeed</option>
-        <option value="origin">بله، سطح دامنه + روند</option>
-      </select>
-    </div>
-  </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="hint" id="run-state">Check an input to begin.</div>
+    <div class="note bad hide" id="run-error"></div>
+    <div class="note info hide" id="origin-box"></div>
+  </div></div>
 
-  <div class="hint" style="margin-top:10px">
-    سقف را روی <code>all</code> بگذار تا همه‌ی آدرس‌ها تست شوند.
-  </div>
-
-  <div class="actions">
-    <button id="btn-check">بررسی ورودی</button>
-    <span id="check-state" class="hint"></span>
-  </div>
-
-  <div id="kids-box" class="hide" style="margin-top:16px">
-    <label>کدام sitemapها؟</label>
-    <div class="kids" id="kids"></div>
-    <div class="actions">
-      <button class="ghost sm" id="kids-all">همه</button>
-      <button class="ghost sm" id="kids-none">هیچ‌کدام</button>
-      <button id="kids-ok">تأیید انتخاب</button>
-    </div>
-  </div>
-
-  <div id="plan" class="hide">
-    <div class="note okbox" id="plan-text"></div>
-    <div class="note bad hide" id="plan-capped"></div>
-    <div class="note hide" id="plan-crowd"></div>
-    <div class="actions">
-      <button id="btn-run">شروع تست</button>
-      <button class="ghost" id="btn-back">تغییر ورودی</button>
-    </div>
-  </div>
-</section>
-
-<!-- ──────────────────────────── step 2: results ──────────────────────────── -->
-<section class="card hide" id="card-run">
-  <h2><span class="n">۲</span>نتایج</h2>
-
-  <div class="chips" id="counts"></div>
-  <div class="bar"><i id="bar"></i></div>
-  <div class="hint" id="run-state"></div>
-
-  <div class="note hide" id="run-error"></div>
-  <div class="note hide" id="origin-box"></div>
-
-  <div class="actions">
-    <button id="btn-export">ذخیره به اکسل</button>
-    <button class="ghost hide" id="btn-reveal">نمایش فایل در پوشه</button>
-    <button class="ghost" id="btn-restart">تست جدید</button>
-    <span class="hint" id="export-state"></span>
-  </div>
-
-  <div class="scroll" style="margin-top:14px">
+  <div class="scroll">
     <table>
       <thead><tr id="head"></tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
-  <div class="hint">روی سرستون کلیک کن تا مرتب شود. پیش‌فرض: بدترین نمره بالا.</div>
-</section>
+  <div class="hint">Click a column to sort. Worst score first by default.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ reports ═══ -->
+<div id="view-reports" class="hide">
+  <div class="card" id="rep-list"><div class="empty">No reports yet. Finished scans are saved here.</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ settings ═══ -->
+<div id="view-settings" class="hide">
+  <div class="card"><div class="body">
+    <label for="s-key">Google API key</label>
+    <input type="password" id="s-key" placeholder="AIza..." spellcheck="false" autocomplete="off">
+    <div class="hint" id="key-state"></div>
+    <div class="actions">
+      <button id="s-save">Save</button>
+      <button class="ghost" id="s-test">Test connection</button>
+    </div>
+
+    <details style="margin-top:20px">
+      <summary style="cursor:pointer;font-size:13.5px">Where do I get a key?</summary>
+      <ol style="margin-top:11px">
+        <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">Create a project</a>, if you have none.</li>
+        <li>Enable the <a href="https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com" target="_blank" rel="noreferrer">PageSpeed Insights API</a>.</li>
+        <li>Enable the <a href="https://console.cloud.google.com/apis/library/chromeuxreport.googleapis.com" target="_blank" rel="noreferrer">Chrome UX Report API</a> as well, for the CrUX option.</li>
+        <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Credentials → Create credentials → API key</a>.</li>
+        <li>Leave <b>Application restrictions</b> on <code>None</code>. Setting HTTP referrers or IP addresses rejects a server-to-server call.</li>
+      </ol>
+      <div class="hint">The key is stored on this computer only, and is sent nowhere but Google.</div>
+    </details>
+  </div></div>
+</div>
 
 </div>
 
-<!-- ───────────────────────────── settings dialog ─────────────────────────── -->
-<dialog id="dlg">
-  <h2 style="margin:0 0 12px;font-size:16px">تنظیمات</h2>
-
-  <label for="s-key">کلید API گوگل</label>
-  <input type="password" id="s-key" dir="ltr" placeholder="AIza..." spellcheck="false" autocomplete="off">
-  <div class="hint" id="key-state"></div>
-
-  <div class="actions">
-    <button id="s-save">ذخیره</button>
-    <button class="ghost" id="s-test">تست کلید</button>
-    <button class="ghost" id="s-close">بستن</button>
+<!-- ══════════════════════════════════════════════════════════════ modal ═══ -->
+<dialog id="dlg-det">
+  <div class="head">
+    <h2 id="det-title"></h2>
+    <button class="ghost sm" id="det-close">Close</button>
   </div>
+  <div class="body" id="det-body"></div>
+  <div class="foot">
+    <a id="det-live" href="#" target="_blank" rel="noreferrer"><button class="ghost">Open live test</button></a>
+  </div>
+</dialog>
 
-  <details style="margin-top:18px">
-    <summary style="cursor:pointer;font-size:14px">کلید را از کجا بگیرم؟</summary>
-    <ol style="margin-top:10px">
-      <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">یک پروژه بساز</a> (اگر نداری).</li>
-      <li><a href="https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com" target="_blank" rel="noreferrer">PageSpeed Insights API</a> را Enable کن.</li>
-      <li><a href="https://console.cloud.google.com/apis/library/chromeuxreport.googleapis.com" target="_blank" rel="noreferrer">Chrome UX Report API</a> را هم Enable کن (برای گزینه‌ی CrUX).</li>
-      <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Credentials → Create credentials → API key</a>.</li>
-      <li>در <b>Application restrictions</b> گزینه‌ی <code>None</code> را نگه دار — اگر روی HTTP referrers یا IP بگذاری، درخواست سرور‌به‌سرور رد می‌شود.</li>
-    </ol>
-    <div class="hint">کلید فقط روی همین کامپیوتر ذخیره می‌شود و هیچ‌جا فرستاده نمی‌شود جز خودِ گوگل.</div>
-  </details>
+<dialog id="dlg-msg">
+  <div class="head"><h2 id="msg-title"></h2></div>
+  <div class="body" id="msg-body"></div>
+  <div class="foot"><button id="msg-ok">OK</button></div>
 </dialog>
 
 <script type="module">
-import { FILL, lighthouseBand } from '/score.js';
+import { FILL, lighthouseBand, BYTE_THRESHOLDS } from '/score.js';
 
-// The same palette the workbook paints with, minus Excel's alpha byte.
 for (const [k, argb] of Object.entries(FILL)) {
   document.documentElement.style.setProperty('--' + k, '#' + argb.slice(2));
 }
 
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-async function api(path, body) {
+async function api(path, body, signal) {
   const res = await fetch('/api' + path + '?t=' + TOKEN, {
     method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal,
   });
   const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error || 'خطای ناشناخته');
+  if (!res.ok || data.error) throw new Error(data.error || 'Something went wrong');
   return data;
 }
 
-// ───────────────────────────────── input state
+function say(id, text, kind) {
+  const el = $(id);
+  el.textContent = text;
+  el.style.color = kind === 'bad' ? '#b3261e' : '';
+}
 
-let mode = 'url';
+/** A modal is the only thing that reliably interrupts someone mid-scan. */
+function tell(title, html) {
+  $('msg-title').textContent = title;
+  $('msg-body').innerHTML = html;
+  $('dlg-msg').showModal();
+}
+$('msg-ok').onclick = () => $('dlg-msg').close();
+
+// ───────────────────────────────────────────────────────────────── views
+
+$('view-scan').parentElement.querySelector('nav').onclick = (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (!btn) return;
+  for (const b of btn.parentElement.children) b.setAttribute('aria-selected', String(b === btn));
+  for (const v of ['scan', 'reports', 'settings']) $('view-' + v).classList.toggle('hide', v !== btn.dataset.view);
+  if (btn.dataset.view === 'reports') loadReports();
+};
+
+// ───────────────────────────────────────────────────────────────── input
+
+let mode = 'list';
 let fileText = '', fileName = '';
-let children = null, picked = null;
+let children = null, picked = null, checked = null;
 
 $('tabs').onclick = (e) => {
   const btn = e.target.closest('button[data-mode]');
   if (!btn) return;
   mode = btn.dataset.mode;
   for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b === btn));
-  for (const id of ['url', 'list', 'file', 'sitemap', 'sitemap-index']) {
-    $('in-' + id).classList.toggle('hide', id !== (mode === 'list' ? 'list' : mode));
-  }
+  for (const id of ['list', 'file', 'sitemap']) $('in-' + id).classList.toggle('hide', id !== mode);
   reset();
 };
 
@@ -301,52 +374,49 @@ $('f-file').onchange = async (e) => {
   reset();
 };
 
-/** What the form currently describes, in the shape the server wants. */
 function payload() {
-  const devices = $('f-devices').value.split(',');
   const base = {
-    devices, max: $('f-max').value.trim() || '50',
+    devices: $('f-devices').value.split(','),
+    max: $('f-max').value.trim() || 'all',
     filter: $('f-filter').value.trim() || undefined,
     crux: $('f-crux').value,
   };
-  if (mode === 'url') return { ...base, mode: 'url', value: $('f-url').value.trim() };
   if (mode === 'list') return { ...base, mode: 'url', value: $('f-list').value };
   if (mode === 'file') return { ...base, mode: 'url', value: fileText, filename: fileName };
-  if (mode === 'sitemap') return { ...base, mode: 'sitemap', value: $('f-sitemap').value.trim() };
-  return { ...base, mode: 'sitemap-index', value: $('f-index').value.trim(), pick: picked || undefined };
+  return { ...base, mode: 'sitemap-index', value: $('f-sitemap').value.trim(), pick: picked || undefined };
 }
 
 function reset() {
   $('plan').classList.add('hide');
   $('kids-box').classList.add('hide');
-  $('check-state').textContent = '';
-  children = null; picked = null;
+  say('check-state', '');
+  children = null; picked = null; checked = null;
+  $('btn-run').disabled = true;
+  $('input-sub').textContent = '';
 }
-
-// ───────────────────────────────── step 1: check
 
 $('btn-check').onclick = check;
 
 async function check() {
   const body = payload();
   if (!body.value || !String(body.value).trim()) {
-    return say('check-state', mode === 'file' ? 'اول یک فایل انتخاب کن.' : 'ورودی خالی است.', true);
+    return say('check-state', mode === 'file' ? 'Choose a file first.' : 'The input is empty.', 'bad');
   }
   $('btn-check').disabled = true;
-  say('check-state', 'در حال بررسی…');
+  say('check-state', 'Checking…');
   try {
     const out = await api('/resolve', body);
-
     if (out.needPick) {
       children = out.children;
       renderKids();
-      say('check-state', `${children.length} sitemap پیدا شد — انتخاب کن.`);
+      say('check-state', `Sitemap index with ${children.length} sitemaps — choose which.`);
       return;
     }
+    checked = out;
     showPlan(out);
     say('check-state', '');
   } catch (e) {
-    say('check-state', e.message, true);
+    say('check-state', e.message, 'bad');
   } finally {
     $('btn-check').disabled = false;
   }
@@ -357,7 +427,7 @@ function renderKids() {
     <label>
       <input type="checkbox" value="${i}" ${c.error || !c.count ? 'disabled' : 'checked'}>
       <b>${esc(c.name)}</b>
-      <span>${c.error ? 'خطا: ' + esc(c.error) : c.nested ? 'تودرتو — پشتیبانی نمی‌شود' : c.count + ' آدرس'}</span>
+      <span class="c">${c.error ? 'error: ' + esc(c.error) : c.nested ? 'nested — not supported' : c.count + ' URLs'}</span>
     </label>`).join('');
   $('kids-box').classList.remove('hide');
 }
@@ -368,100 +438,202 @@ const setKids = (on) => $('kids').querySelectorAll('input:not(:disabled)').forEa
 
 $('kids-ok').onclick = () => {
   picked = [...$('kids').querySelectorAll('input:checked')].map((i) => Number(i.value));
-  if (!picked.length) return say('check-state', 'حداقل یک sitemap را انتخاب کن.', true);
+  if (!picked.length) return say('check-state', 'Select at least one sitemap.', 'bad');
   check();
 };
 
 function showPlan(out) {
   const p = out.plan;
-  const groups = out.groups.map((g) => `${esc(g.name)} (${g.urls})`).join('، ');
   $('plan-text').innerHTML =
-    `<b>${esc(out.siteLabel)}</b> — ${p.totalUrls} آدرس در ${out.groups.length} گروه: ${groups}<br>` +
-    `${p.psiCalls} تست PageSpeed با ${p.psiConcurrency} درخواست هم‌زمان — حدود <b>${p.etaMinutes} دقیقه</b>` +
-    (p.cruxCalls ? `<br>${p.cruxCalls} درخواست CrUX` : '');
+    `<b>${esc(out.siteLabel)}</b> — ${p.totalUrls} URLs in ${out.groups.length} group(s): ` +
+    out.groups.map((g) => `${esc(g.name)} (${g.urls})`).join(', ') +
+    `<br>${p.psiCalls} PageSpeed tests, ${p.psiConcurrency} at a time — roughly <b>${p.etaMinutes} min</b>` +
+    (p.cruxCalls ? `<br>${p.cruxCalls} CrUX requests` : '');
 
   const cap = $('plan-capped');
   if (p.capped.length) {
     const dropped = p.capped.reduce((n, g) => n + (g.of - g.testing), 0);
-    cap.innerHTML = `<b>سقف ${esc($('f-max').value)} باعث شد ${dropped} آدرس تست نشود:</b><br>` +
-      p.capped.map((g) => `${esc(g.name)}: ${g.testing} از ${g.of}`).join('<br>') +
-      '<br>سقف را روی <code>all</code> بگذار تا همه تست شوند.';
+    cap.innerHTML = `<b>Max ${esc($('f-max').value)} leaves out ${dropped} URLs:</b><br>` +
+      p.capped.map((g) => `${esc(g.name)}: ${g.testing} of ${g.of}`).join('<br>') +
+      '<br>Set max to <code>all</code> to test every URL.';
   }
   cap.classList.toggle('hide', !p.capped.length);
+
   $('plan-crowd').classList.toggle('hide', !p.crowding);
   if (p.crowding) {
     $('plan-crowd').textContent =
-      `${p.psiConcurrency} اجرای هم‌زمان یعنی ${p.psiConcurrency} بار خزیدن هم‌زمان روی سرور خودت. ` +
-      'زمان پاسخش بد می‌شود و نمره‌ها بدتر از حالت عادی برمی‌گردند.';
+      `${p.psiConcurrency} parallel runs means ${p.psiConcurrency} simultaneous crawls of your own site. ` +
+      'Its response time suffers and the scores come back worse than under normal traffic.';
   }
+
   $('plan').classList.remove('hide');
+  $('btn-run').disabled = false;
+  $('input-sub').textContent = `${esc(out.siteLabel)} · ${p.totalUrls} URLs · ~${p.etaMinutes} min`;
+  say('run-state', 'Ready.');
 }
 
-$('btn-back').onclick = reset;
+// ───────────────────────────────────────────────────────────────── table
 
-// ───────────────────────────────── step 2: run
+const KB = (b) => (b === null || b === undefined ? '—' : Math.round(b / 1024).toLocaleString() + ' KB');
+const num = (v) => (v === null || v === undefined ? '—' : typeof v === 'number' ? v.toLocaleString() : v);
 
 const COLS = [
-  ['', (r) => `<a href="${psiLink(r)}" target="_blank" rel="noreferrer">تست زنده</a>`, ''],
-  ['آدرس', (r) => esc(r.url), 'u'],
-  ['عنوان', (r) => esc(r.title || ''), 't'],
-  ['دستگاه', (r) => (r.device === 'Desktop' ? 'دسکتاپ' : 'موبایل'), ''],
-  ['نمره', (r) => (r.score ?? '—'), 'n'],
-  ['حکم', (r) => verdictFa(r.verdict), ''],
-  ['LCP', (r) => num(r.values?.LCP), 'n LCP'],
-  ['TBT', (r) => num(r.values?.TBT), 'n TBT'],
-  ['CLS', (r) => num(r.values?.CLS), 'n CLS'],
-  ['FCP', (r) => num(r.values?.FCP), 'n FCP'],
-  ['Speed Index', (r) => num(r.values?.SI), 'n SI'],
-  ['TTFB', (r) => num(r.values?.TTFB), 'n TTFB'],
-  ['وضعیت', (r) => esc(r.status || ''), 'o'],
-  ['بیشترین فرصت بهبود', (r) => esc(r.opportunities || ''), 'o'],
-  ['صرفه‌جویی (ms)', (r) => num(r.savingsMs), 'n'],
-  ['منبع', (r) => esc(r.sourceGroup || ''), 't'],
+  { h: 'URL', cls: 'u', get: (r) => r.url, cell: (r) => esc(r.url) },
+  { h: 'Title', cls: 't', get: (r) => r.title || '', cell: (r) => esc(r.title || '') },
+  { h: 'Device', cls: '', get: (r) => r.device, cell: (r) => r.device },
+  { h: 'Score', cls: 'n', get: (r) => (r.score ?? -1), cell: (r) => (r.score ?? '—') },
+  { h: 'Verdict', cls: '', get: (r) => r.verdict, cell: (r) => r.verdict },
+  { h: 'TTFB', cls: 'n', metric: 'TTFB', get: (r) => v(r, 'TTFB'), cell: (r) => num(v(r, 'TTFB')) },
+  { h: 'FCP', cls: 'n', metric: 'FCP', get: (r) => v(r, 'FCP'), cell: (r) => num(v(r, 'FCP')) },
+  { h: 'LCP', cls: 'n', metric: 'LCP', get: (r) => v(r, 'LCP'), cell: (r) => num(v(r, 'LCP')) },
+  { h: 'CLS', cls: 'n', metric: 'CLS', get: (r) => v(r, 'CLS'), cell: (r) => num(v(r, 'CLS')) },
+  { h: 'TBT', cls: 'n', metric: 'TBT', get: (r) => v(r, 'TBT'), cell: (r) => num(v(r, 'TBT')) },
+  { h: 'Size', cls: 'n', metric: 'BYTES', get: (r) => v(r, 'BYTES'), cell: (r) => KB(v(r, 'BYTES')) },
+  { h: 'Details', cls: '', sort: false, cell: (r, i) => `<button class="det" data-i="${i}">Details</button>` },
 ];
 
-const num = (v) => (v === null || v === undefined ? '—' : v);
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const v = (r, k) => (r.values || {})[k] ?? null;
 const psiLink = (r) =>
   'https://pagespeed.web.dev/analysis?url=' + encodeURIComponent(r.url) +
   '&form_factor=' + (r.device === 'Desktop' ? 'desktop' : 'mobile');
-const verdictFa = (v) => ({ GOOD: 'خوب', 'NEEDS WORK': 'نیاز به کار', POOR: 'ضعیف', ERROR: 'خطا' }[v] || v);
 const rowBand = (v) => (v === 'GOOD' ? 'good' : v === 'NEEDS WORK' ? 'mid' : v === 'POOR' ? 'poor' : 'none');
 
-let rows = [], sortCol = 4, sortDir = 1, running = false;
+let rows = [], shown = [], sortCol = 3, sortDir = 1;
 
-$('head').innerHTML = COLS.map(([h], i) => `<th data-i="${i}">${h}</th>`).join('');
+function drawHead() {
+  $('head').innerHTML = COLS.map((c, i) =>
+    `<th data-i="${i}">${c.h}${i === sortCol ? ` <span class="ar">${sortDir > 0 ? '▲' : '▼'}</span>` : ''}</th>`).join('');
+}
+drawHead();
+
 $('head').onclick = (e) => {
   const th = e.target.closest('th');
   if (!th) return;
   const i = Number(th.dataset.i);
+  if (COLS[i].sort === false) return;
   sortDir = i === sortCol ? -sortDir : 1;
   sortCol = i;
   draw();
 };
 
-$('btn-run').onclick = async () => {
-  $('card-run').classList.remove('hide');
-  $('card-run').scrollIntoView({ behavior: 'smooth' });
-  rows = []; running = true;
-  $('rows').innerHTML = '';
+function draw() {
+  const col = COLS[sortCol];
+  shown = [...rows].sort((a, b) => {
+    const x = col.get(a), y = col.get(b);
+    const bothNum = typeof x === 'number' && typeof y === 'number';
+    // Unmeasured sorts as worst, so the rows needing attention stay on top.
+    if (bothNum) return ((x ?? -1) - (y ?? -1)) * sortDir || String(a.url).localeCompare(String(b.url));
+    return String(x).localeCompare(String(y)) * sortDir;
+  });
+
+  $('rows').innerHTML = shown.map((r, i) => {
+    const band = rowBand(r.verdict);
+    return `<tr class="${band}">` + COLS.map((c) => {
+      // A red row keeps a green cell for any metric that did pass — the same
+      // rule the workbook paints by.
+      const cb = c.metric && r.verdict !== 'ERROR' ? ' c-' + lighthouseBand((r.auditScores || {})[c.metric]) : '';
+      return `<td class="${c.cls}${cb}">${c.cell(r, i)}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+  drawHead();
+}
+
+$('rows').onclick = (e) => {
+  const btn = e.target.closest('button.det');
+  if (btn) showDetails(shown[Number(btn.dataset.i)]);
+};
+
+function showDetails(r) {
+  $('det-title').textContent = r.url;
+  $('det-live').href = psiLink(r);
+
+  const metrics = [
+    ['Score', r.score ?? '—'], ['Verdict', r.verdict], ['Device', r.device],
+    ['TTFB', num(v(r, 'TTFB')) + ' ms'], ['FCP', num(v(r, 'FCP')) + ' ms'],
+    ['LCP', num(v(r, 'LCP')) + ' ms'], ['CLS', num(v(r, 'CLS'))],
+    ['TBT', num(v(r, 'TBT')) + ' ms'], ['Speed Index', num(v(r, 'SI')) + ' ms'],
+    ['Page size', KB(v(r, 'BYTES'))], ['Tested at', r.testedAt || '—'],
+    ['Lighthouse', r.lhVersion || '—'], ['Source', r.sourceGroup || '—'],
+  ];
+
+  let html = '<dl class="kv">' + metrics.map(([k, val]) =>
+    `<dt>${k}</dt><dd>${esc(val)}</dd>`).join('') + '</dl>';
+
+  if (r.verdict === 'ERROR') {
+    html += `<h3 style="font-size:13.5px;margin:0 0 8px">Why this failed</h3>
+             <pre class="err">${esc(r.status || 'No reason given.')}</pre>`;
+  }
+
+  const det = r.details || [];
+  if (det.length) {
+    html += `<h3 style="font-size:13.5px;margin:18px 0 8px">Improvements — ${det.length}, ` +
+            `${(r.savingsMs || 0).toLocaleString()} ms in total</h3>` +
+            '<div class="opp">' + det.map((d) =>
+              `<div><span>${esc(d.title)}</span><b>${d.ms.toLocaleString()} ms</b></div>`).join('') + '</div>';
+  } else if (r.verdict !== 'ERROR') {
+    html += '<div class="note okbox" style="margin:0">Lighthouse found nothing worth more than 50 ms here.</div>';
+  }
+
+  $('det-body').innerHTML = html;
+  $('dlg-det').showModal();
+}
+$('det-close').onclick = () => $('dlg-det').close();
+
+// ────────────────────────────────────────────────────────────────── run
+
+let running = false, runAbort = null;
+
+$('btn-run').onclick = () => (running ? stopRun() : startRun());
+
+function stopRun() {
+  if (runAbort) runAbort.abort();
+  api('/stop', {}).catch(() => {});
+  say('run-state', 'Stopping — tests already running will finish.');
+  $('btn-run').disabled = true;
+}
+
+async function startRun() {
+  // A dead proxy or a bad key turns every single test into an error row. One
+  // real call up front costs seconds and saves the whole run.
+  say('run-state', 'Checking the connection to Google…');
+  $('btn-run').disabled = true;
+  try {
+    const probe = await api('/preflight', {});
+    if (!probe.ok) {
+      $('btn-run').disabled = false;
+      say('run-state', 'Not started.');
+      return tell('Cannot reach Google', `
+        <p>The scan did not start. A test request failed three times:</p>
+        <pre class="err">${esc(probe.detail)}</pre>
+        <p class="hint">${esc(probe.advice || '')}</p>
+        <p class="hint">Fix the connection and press Start scan again.</p>`);
+    }
+  } catch (e) {
+    $('btn-run').disabled = false;
+    return tell('Connection check failed', `<pre class="err">${esc(e.message)}</pre>`);
+  }
+
+  rows = []; draw();
+  running = true;
+  runAbort = new AbortController();
+  $('input-fold').open = false;
+  $('btn-run').disabled = false;
+  $('btn-run').textContent = 'Stop scan';
+  $('btn-run').classList.replace('primary', 'stop');
+  $('btn-excel').disabled = $('btn-csv').disabled = true;
   $('run-error').classList.add('hide');
   $('origin-box').classList.add('hide');
-  $('btn-reveal').classList.add('hide');
-  $('btn-run').disabled = true;
-  $('btn-export').disabled = true;
-  say('export-state', '');
+  $('bar').style.width = '0';
 
   try {
     const res = await fetch('/api/run?t=' + TOKEN, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload()),
+      signal: runAbort.signal,
     });
-    if (!res.ok) throw new Error((await res.json()).error || 'اجرا شروع نشد');
+    if (!res.ok) throw new Error((await res.json()).error || 'The scan did not start');
 
-    // One JSON event per line, read as it arrives — the table fills during the
-    // run instead of after it.
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '';
     for (;;) {
@@ -473,35 +645,40 @@ $('btn-run').onclick = async () => {
       for (const line of lines) if (line.trim()) onEvent(JSON.parse(line));
     }
   } catch (e) {
-    fail(e.message);
+    if (e.name !== 'AbortError') fail(e.message);
   } finally {
     running = false;
+    runAbort = null;
     $('btn-run').disabled = false;
-    $('btn-export').disabled = !rows.length;
+    $('btn-run').textContent = 'Start scan';
+    $('btn-run').classList.replace('stop', 'primary');
+    $('btn-excel').disabled = $('btn-csv').disabled = !rows.length;
   }
-};
+}
 
-const PHASE_FA = {
-  sitemaps: 'خواندن sitemapها', crux: 'داده‌ی کاربر واقعی', domain: 'داده‌ی دامنه',
-  titles: 'عنوان صفحات', trend: 'روند هفتگی', psi: 'تست PageSpeed',
+const PHASES = {
+  sitemaps: 'Reading sitemaps', crux: 'Real-user data', domain: 'Domain data',
+  titles: 'Page titles', trend: 'Weekly trend', psi: 'PageSpeed tests',
 };
 
 function onEvent(e) {
   if (e.type === 'phase') {
     $('bar').style.width = (e.done / e.total * 100) + '%';
-    say('run-state', `${PHASE_FA[e.phase] || e.phase} — ${e.done} از ${e.total}`);
+    say('run-state', `${PHASES[e.phase] || e.phase} — ${e.done} of ${e.total}`);
   } else if (e.type === 'row') {
     rows.push(e.row);
     draw();
     counts();
   } else if (e.type === 'done') {
     $('bar').style.width = '100%';
-    say('run-state', `تمام شد — ${rows.length} تست`);
+    say('run-state', e.stopped
+      ? `Stopped — ${rows.length} tests finished before you stopped it.`
+      : `Done — ${rows.length} tests.`);
     counts();
-    if (e.origins?.length) {
-      $('origin-box').innerHTML = '<b>کاربران واقعی (کل دامنه):</b><br>' + e.origins.map((o) =>
-        `${esc(o.origin.replace(/^https?:\/\//, ''))} / ${o.device === 'Desktop' ? 'دسکتاپ' : 'موبایل'}: ` +
-        (o.cwv === 'NO DATA' ? 'داده‌ای نیست' : `${o.cwv} (نمره ${o.score}، LCP ${o.values?.LCP ?? '—'}ms)`)).join('<br>');
+    if (e.origins && e.origins.length) {
+      $('origin-box').innerHTML = '<b>Real users, whole domain:</b><br>' + e.origins.map((o) =>
+        `${esc(o.origin.replace(/^https?:\/\//, ''))} / ${o.device}: ` +
+        (o.cwv === 'NO DATA' ? 'no data' : `${o.cwv} (score ${o.score}, LCP ${(o.values || {}).LCP ?? '—'} ms)`)).join('<br>');
       $('origin-box').classList.remove('hide');
     }
   } else if (e.type === 'error') {
@@ -512,99 +689,119 @@ function onEvent(e) {
 function counts() {
   const n = (v) => rows.filter((r) => r.verdict === v).length;
   $('counts').innerHTML = [
-    ['خوب', n('GOOD'), 'good'], ['نیاز به کار', n('NEEDS WORK'), 'mid'],
-    ['ضعیف', n('POOR'), 'poor'], ['خطا', n('ERROR'), 'none'],
-  ].map(([label, v, band]) =>
-    `<span class="chip" style="background:var(--${band});padding:3px 10px;border-radius:5px">${label} <b>${v}</b></span>`
-  ).join('');
-}
-
-function draw() {
-  const key = COLS[sortCol][1];
-  const sorted = [...rows].sort((a, b) => {
-    // Worst score first by default: an unscored row is worse than a 0.
-    if (sortCol === 4) {
-      return ((a.score ?? -1) - (b.score ?? -1)) * sortDir || a.url.localeCompare(b.url);
-    }
-    const [x, y] = [key(a), key(b)].map((v) => String(v).replace(/<[^>]*>/g, ''));
-    const [nx, ny] = [parseFloat(x), parseFloat(y)];
-    if (Number.isFinite(nx) && Number.isFinite(ny)) return (nx - ny) * sortDir;
-    return x.localeCompare(y, 'fa') * sortDir;
-  });
-
-  $('rows').innerHTML = sorted.map((r) => {
-    const band = rowBand(r.verdict);
-    return `<tr class="${band}">` + COLS.map(([, render, cls]) => {
-      // A red row still keeps a green cell for any metric that did pass, the
-      // same rule the workbook paints by.
-      const metric = (cls.split(' ')[1] || '');
-      const cellBand = metric && r.verdict !== 'ERROR'
-        ? ' c-' + lighthouseBand(r.auditScores?.[metric])
-        : '';
-      return `<td class="${cls.split(' ')[0]}${cellBand}">${render(r)}</td>`;
-    }).join('') + '</tr>';
-  }).join('');
+    ['Good', n('GOOD'), 'good'], ['Needs work', n('NEEDS WORK'), 'mid'],
+    ['Poor', n('POOR'), 'poor'], ['Errors', n('ERROR'), 'none'],
+  ].map(([label, val, band]) =>
+    `<span class="chip" style="background:var(--${band})">${label} <b>${val}</b></span>`).join('');
 }
 
 function fail(msg) {
   $('run-error').textContent = msg;
-  $('run-error').className = 'note bad';
+  $('run-error').classList.remove('hide');
 }
 
-$('btn-restart').onclick = () => {
-  $('card-run').classList.add('hide');
-  reset();
-  $('card-input').scrollIntoView({ behavior: 'smooth' });
-};
+// ──────────────────────────────────────────────────────────────── export
 
-$('btn-export').onclick = async () => {
-  $('btn-export').disabled = true;
-  say('export-state', 'در حال نوشتن فایل…');
+const save = (fmt) => async () => {
+  const btn = fmt === 'csv' ? $('btn-csv') : $('btn-excel');
+  btn.disabled = true;
   try {
-    const out = await api('/export', {});
-    say('export-state', out.path);
-    $('btn-reveal').classList.remove('hide');
+    const out = await api('/export', { format: fmt });
+    tell('Saved', `<p>${esc(out.path)}</p>`);
+    loadReports();
   } catch (e) {
-    say('export-state', e.message, true);
+    tell('Could not save', `<pre class="err">${esc(e.message)}</pre>`);
   } finally {
-    $('btn-export').disabled = false;
+    btn.disabled = false;
+  }
+};
+$('btn-excel').onclick = save('xlsx');
+$('btn-csv').onclick = save('csv');
+
+// ─────────────────────────────────────────────────────────────── reports
+
+async function loadReports() {
+  let list = [];
+  try { list = (await api('/reports')).reports || []; } catch { /* show the empty state */ }
+
+  if (!list.length) {
+    $('rep-list').innerHTML = '<div class="empty">No reports yet. Finished scans are saved here.</div>';
+    return;
+  }
+  $('rep-list').innerHTML = list.map((r) => `
+    <div class="rep">
+      <div>
+        <div class="nm">${esc(r.label)}</div>
+        <div class="meta">${esc(r.when)} · ${r.rows} rows · ${r.counts.GOOD} good, ${r.counts.POOR} poor, ${r.counts.ERROR} errors${r.stopped ? ' · stopped early' : ''}</div>
+      </div>
+      <div class="sp"></div>
+      <button class="ghost sm" data-open="${esc(r.id)}">View</button>
+      <button class="ghost sm" data-xlsx="${esc(r.id)}">Excel</button>
+      <button class="ghost sm" data-csv="${esc(r.id)}">CSV</button>
+    </div>`).join('');
+}
+
+$('rep-list').onclick = async (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const { open, xlsx, csv } = btn.dataset;
+  btn.disabled = true;
+  try {
+    if (open) {
+      const out = await api('/report', { id: open });
+      rows = out.rows;
+      draw();
+      counts();
+      $('btn-excel').disabled = $('btn-csv').disabled = false;
+      say('run-state', `Showing a saved report — ${rows.length} rows.`);
+      $('input-fold').open = false;
+      document.querySelector('nav button[data-view=scan]').click();
+    } else {
+      const out = await api('/export', { id: xlsx || csv, format: xlsx ? 'xlsx' : 'csv' });
+      tell('Saved', `<p>${esc(out.path)}</p>`);
+    }
+  } catch (err) {
+    tell('Could not open it', `<pre class="err">${esc(err.message)}</pre>`);
+  } finally {
+    btn.disabled = false;
   }
 };
 
-$('btn-reveal').onclick = () => api('/reveal', {}).catch((e) => say('export-state', e.message, true));
+// ────────────────────────────────────────────────────────────── settings
 
-// ───────────────────────────────── settings
-
-$('btn-settings').onclick = async () => {
+async function refreshKey() {
   const s = await api('/settings');
-  say('key-state', s.hasKey ? `کلیدی ذخیره شده است (${s.keyTail})` : 'هنوز کلیدی ذخیره نشده.');
-  $('dlg').showModal();
-};
-$('s-close').onclick = () => $('dlg').close();
+  $('key-badge').textContent = s.hasKey ? 'API key ' + s.keyTail : 'no API key yet';
+  say('key-state', s.hasKey ? `A key is saved (${s.keyTail}).` : 'No key saved yet.');
+  return s;
+}
 
 $('s-save').onclick = async () => {
   const apiKey = $('s-key').value.trim();
-  if (!apiKey) return say('key-state', 'کلید خالی است.', true);
+  if (!apiKey) return say('key-state', 'The key is empty.', 'bad');
   await api('/settings', { apiKey });
   $('s-key').value = '';
-  say('key-state', 'ذخیره شد. حالا «تست کلید» را بزن.');
+  await refreshKey();
+  say('key-state', 'Saved. Now press Test connection.');
 };
 
 $('s-test').onclick = async () => {
-  say('key-state', 'در حال تست با یک درخواست واقعی…');
+  say('key-state', 'Testing with a real request…');
   const body = $('s-key').value.trim() ? { apiKey: $('s-key').value.trim() } : {};
-  const out = await api('/check-key', body);
-  say('key-state', out.ok ? 'کلید کار می‌کند.' : `کار نکرد — ${out.detail}`, !out.ok);
+  try {
+    const out = await api('/preflight', body);
+    say('key-state', out.ok ? 'The key works.' : `Did not work — ${out.detail}`, out.ok ? '' : 'bad');
+    if (!out.ok && out.advice) tell('Connection failed', `<pre class="err">${esc(out.detail)}</pre><p class="hint">${esc(out.advice)}</p>`);
+  } catch (e) {
+    say('key-state', e.message, 'bad');
+  }
 };
 
-function say(id, text, bad) {
-  const el = $(id);
-  el.textContent = text;
-  el.style.color = bad ? '#b3261e' : '';
-}
-
-// Nudge first-time users to the key before they hit a wall 40 minutes in.
-api('/settings').then((s) => { if (!s.hasKey) $('btn-settings').click(); });
+// Send a first-time user straight to the key, rather than into a wall later.
+refreshKey().then((s) => {
+  if (!s.hasKey) document.querySelector('nav button[data-view=settings]').click();
+});
+counts();
 </script>
 </body>
 </html>

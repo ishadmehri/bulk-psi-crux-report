@@ -868,7 +868,7 @@ ok('junk input is an error, not an empty run', junk.status === 400 && /No valid 
 
 const early = await call('/api/export', {});
 ok('exporting before any run says so instead of writing an empty file',
-  early.status === 400 && /run a test first/i.test(early.body.error), early.body);
+  early.status === 400 && /run a scan first/i.test(early.body.error), early.body);
 
 await new Promise((r) => gui.server.close(r));
 
